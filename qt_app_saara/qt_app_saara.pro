@@ -1,0 +1,2 @@
+QT += core
+QT += widgets
