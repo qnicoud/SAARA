@@ -8,6 +8,7 @@
 ##      - readxl 1.3.1
 ##      - xlsx 0.6.1
 ##      - car 3.0-2
+##      - testit 0.9
 ##      - RInside 0.2.15
 ##
 ## Layout :
@@ -24,15 +25,18 @@
 #   Remark : For the embedding to options are available. One is to embed the R script into Qt using RInside.
 #                   The other is to build the Qt with R using the bioconductor package qtbase (but not available for this R version)
 #   In C++
-#       - code the GUI
+#       - code the GUI using Qt
 #       - add a save config function that generates an .xml or .config or .ini ? 
 #
 #   In R
-#       - Keep on modulating the code and transforming/improving the initial program
+#       - Re-write the code on data extracyion and formating
+#       - Re-write the code on data statistical analysis
+#       - Add varaible neccessary to the communication between R and C++
 #       - Add assertion and try
+#       - include tests on the number of arguments given to each fnctions usin 'nargs'
 #       - Find a way to maintain versions of packages and to transmit R with the application. --> devtools package
 #       - add the nodule mass and/or weight and the vial volume in the template to be used in the different functions.
-#       - template is set up with no header. should that be added for an esaier uage of the program ?
+#       - template is set up with no header. should that be added for an esaier usage of the program ?
 #       - change library with require and implement this in the functions
 
 rm(list = ls())
@@ -83,7 +87,7 @@ trim_file_path <- function(file_path)
     trimmed_string <- unlist(strsplit(file_path, '/'))[length(unlist(strsplit(file_path, '/')))]
     
     trimmed_string
-} ## OK <- not needed anymore
+} ## Ok<- not needed anymore
 
 
 calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial_volume = 21, splitV = 5, 
@@ -154,7 +158,7 @@ calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial
 
         # Return the output nmolC2H4_H_Plant
     nmolC2H4_H_Plant
-} ## OK <- error assertion has to be improved
+} ## Ok <- error assertion has to be improved
 
 
 calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 5, custom_formula = 0)
@@ -211,7 +215,7 @@ calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 
         
         # Return the list_of_values
     list_of_values
-} ## OK <- nodule nbr/mass have to be implemented + must improve output
+} ## Ok <- nodule nbr/mass have to be implemented + must improve output
 
 
 get_tree_path <- function(pathToExpeFolder)
@@ -331,7 +335,7 @@ data_extraction <- function(pathToExpeFolder)
     
         # Return all_data
     all_data
-} ## OK
+} ## Ok
 
 
 template_gen <- function(pathToExpeFolder, path_to_template)
@@ -452,7 +456,7 @@ data_formating_and_calc <- function(all_data, template)
     
         # Return extracted_data
     result_data
-} ## Not Verified till the end but seems to work
+} ## Ol
 
 
 write_data <- function(result_data, save_path)
@@ -505,6 +509,10 @@ remove_controls <- function(template)
     }
 } ## Ongoing
 
+pool_expe <- function(results)
+{
+    
+}
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
@@ -578,7 +586,7 @@ check_normality <- function(result, normalityThreshold = 0.05)
     
         # Return s_w_results
     s_w_results
-} ## OK
+} ## Ok
 
 check_var_h <- function(result, varHThreshold = 0.05)
 {
@@ -654,7 +662,7 @@ check_var_h <- function(result, varHThreshold = 0.05)
     }
      
     varH
-} ## OK
+} ## Ok
 
 check_means <- function(result, normality_results, var_h_results)
 {
@@ -694,7 +702,7 @@ check_means <- function(result, normality_results, var_h_results)
     ##                                  -
     ##
     ##                              If the test was a Kruskal-Wallis
-    ##
+    ##                                  - 
     
     
     if (!require(car))
@@ -719,14 +727,17 @@ check_means <- function(result, normality_results, var_h_results)
                 #par(mar=rep(2,4)) #marge des valeurs
                 #boxplot(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), ylab = "nmolC2H4.h.plant")
                 
-                #ANOVA1
+                    # ANOVA
                 anova_model <- (lm(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ))
                 
                 ##Graphics Verification of residues normality
-                x11()
                 oldpar <- par(mar = rep(2,4), oma = rep(2,4), mfrow = c(2,2))
+                
+                pdf(file = "qqplot.pdf")
                 plot(anova_model)
                 par(oldpar)
+                dev.off()
+                
                 qqPlot(anova_model, simulate = TRUE, id.method = "y", id.n = 2)
                 
                 ##TO DO : Verify residues normality
@@ -743,7 +754,7 @@ check_means <- function(result, normality_results, var_h_results)
                     }
                 }
                 
-                sum()
+                
                 
                 Anova(anova_model, type = 2)
                 
@@ -764,6 +775,8 @@ check_means <- function(result, normality_results, var_h_results)
         }
     }
     
+        # Detach package
+    detach("package:car", unload = TRUE)
     ##    * 0.05     ** 0.01      *** 0.001
 }
 
