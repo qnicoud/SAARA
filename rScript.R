@@ -456,7 +456,7 @@ data_formating_and_calc <- function(all_data, template)
     
         # Return extracted_data
     result_data
-} ## Ol
+} ## Ok
 
 
 write_data <- function(result_data, save_path)
@@ -778,7 +778,7 @@ check_means <- function(result, normality_results, var_h_results)
         # Detach package
     detach("package:car", unload = TRUE)
     ##    * 0.05     ** 0.01      *** 0.001
-}
+} # Ongoing
 
 
 
@@ -788,8 +788,13 @@ check_means <- function(result, normality_results, var_h_results)
 ## Temp script
 
 pathToExpeFolder <- "C:/Users/quent/Desktop/ARA test"
+pathToExpeFolder <- "C:/Users/quent/Desktop/ARA test"
+
+pathToTemplate <- "C:/Users/quent/Desktop/ARA test/temp.xlsx"
+pathToTemplate <- "C:/Users/quent/Desktop/ARA test/temp.xlsx"
+
 extract <- data_extraction(pathToExpeFolder)
-temp <- template_gen(pathToExpeFolder, "C:/Users/quent/Desktop/ARA test/temp.xlsx")
+temp <- template_gen(pathToExpeFolder, pathToTemplate)
 res <- data_formating_and_calc(extract, temp)
 
 write_data(all_data, "F:/ARA2/results.xlsx")
