@@ -23,13 +23,12 @@
 ## TO DO LIST :
 #
 #   Remark : For the embedding to options are available. One is to embed the R script into Qt using RInside.
-#                   The other is to build the Qt with R using the bioconductor package qtbase (but not available for this R version)
+#                   The other is to build the Qt with R using the bioconductor package qtbase (found out that is not compatible with this R version)
 #   In C++
 #       - code the GUI using Qt
 #       - add a save config function that generates an .xml or .config or .ini ? 
 #
 #   In R
-#       - Re-write the code on data extracyion and formating
 #       - Re-write the code on data statistical analysis
 #       - Add varaible neccessary to the communication between R and C++
 #       - Add assertion and try
@@ -37,7 +36,7 @@
 #       - Find a way to maintain versions of packages and to transmit R with the application. --> devtools package
 #       - add the nodule mass and/or weight and the vial volume in the template to be used in the different functions.
 #       - template is set up with no header. should that be added for an esaier usage of the program ?
-#       - change library with require and implement this in the functions
+#       - remove package mannagement from all function as I added load_SAARA_packages an unload_SAARA_packages
 
 rm(list = ls())
 
@@ -47,15 +46,10 @@ library(RInside)
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
-                ##                                                      PARAMETERS                                                    ##
+                ##                                  CODE RELATED TO THE FUNCTIONNING OF THE PIPELINE                                  ##
                 ########################################################################################################################
 
-## Still required ?
-
-pathToExpeFolder <- workDir <- "F:/ARA2"
-setwd(workDir)
-isEt <- TRUE ##Was Et control done?
-isAc <- TRUE ##Was Ac control done?
+# Varaible that should recieve input from the C++ programm
 normalityThreshold <- 0.05
 varHThreshold <- 0.05
 poolData <- FALSE ##TRUE = testing several mutants OR repetition ##FALSE = kinetics
@@ -64,6 +58,38 @@ splitV <- 5
 custom_formula <- 0
 slope <- 495
 
+list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
+                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"))
+
+load_SAARA_packages <- function(list_of_required_pckg)
+{
+   if(!require(devtools))
+   {
+       install.packages("devtools")
+       
+       library(devtools)
+   }
+
+    for ( i in 1:dim(list_of_required_pckg)[1])
+    {
+        if (!require(list_of_required_pckg$pckg[i]))
+        {
+            devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i])
+            
+            library(list_of_required_pckg$pckg[i])
+        }
+    }
+} # To be tested
+
+unload_SAARA_packages<- function(list_of_required_pckg)
+{
+    for ( i in 1:dim(list_of_required_pckg)[1])
+    {
+        detach(paste("package", list_of_required_pckg$pckg[i], sep = ""), unload = TRUE)
+    }
+    
+    detach("package:devtools", unload = TRUE)
+} # To be tested
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
@@ -83,6 +109,12 @@ trim_file_path <- function(file_path)
     ##
     ## Output:
     ##      - trimmed_string :  the string containning only the folder/file name. 
+    
+    if (nargs <= 1)
+    {
+        
+    }
+    
     
     trimmed_string <- unlist(strsplit(file_path, '/'))[length(unlist(strsplit(file_path, '/')))]
     
@@ -727,20 +759,18 @@ check_means <- function(result, normality_results, var_h_results)
                 #par(mar=rep(2,4)) #marge des valeurs
                 #boxplot(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), ylab = "nmolC2H4.h.plant")
                 
-                    # ANOVA
-                anova_model <- (lm(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ))
+                # linear model for anova
+                anova_model <- lm(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] )
                 
-                ##Graphics Verification of residues normality
-                oldpar <- par(mar = rep(2,4), oma = rep(2,4), mfrow = c(2,2))
-                
-                pdf(file = "qqplot.pdf")
+                # Graphics Verification of residues normality
+                        # oldpar <- par(mar = rep(2,4), oma = rep(2,4), mfrow = c(2,2))
+                pdf(file = paste(pathToExpeFolder, "/qqplot_anova_", gsub(" ", "_", names(result)[i]), ".pdf", sep = ""))
                 plot(anova_model)
-                par(oldpar)
+                        # par(oldpar)
+                qqPlot(anova_model, simulate = TRUE, id.method = "y", id.n = 2, main = "Q-Q plot with confidence enveloppe")
                 dev.off()
                 
-                qqPlot(anova_model, simulate = TRUE, id.method = "y", id.n = 2)
-                
-                ##TO DO : Verify residues normality
+                # Verify residues normality
                 res <- anova_model$residuals
                 resNorm <- numeric()
                 isResNorm <- logical()
@@ -754,24 +784,22 @@ check_means <- function(result, normality_results, var_h_results)
                     }
                 }
                 
-                
-                
+                # AnOVa
                 Anova(anova_model, type = 2)
                 
-                tukey <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ))
-                plot(tukey)
-                
+                postHocTukey <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ))
+                plot(postHocTukey)
             }
             else
             {
                 #kruslal-wallis (not normal) ou correction de welch (oneway.test ; var not H)
-                kruskal.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]))
+                    #kruskal.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]))
                 oneway.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]), var.equal = FALSE)
             }
         }
         else
         {
-            #kruslal-wallis ou ANOVA
+            #kruslal-wallis
         }
     }
     
@@ -780,6 +808,11 @@ check_means <- function(result, normality_results, var_h_results)
     ##    * 0.05     ** 0.01      *** 0.001
 } # Ongoing
 
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+                ########################################################################################################################
+                ##                                FUNCTIONS RELATED TO DATA GRAPHICAL REPRESENTATION                                  ##
+                ########################################################################################################################
+
 
 
 
@@ -787,11 +820,16 @@ check_means <- function(result, normality_results, var_h_results)
 
 ## Temp script
 
-pathToExpeFolder <- "C:/Users/quent/Desktop/ARA test"
+list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
+                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"))
+
+pathToExpeFolder <- "C:/Users/quentin.nicoud/Desktop/ARA test"
 pathToExpeFolder <- "C:/Users/quent/Desktop/ARA test"
 
+pathToTemplate <- "C:/Users/quentin.nicoud/Desktop/ARA test/temp.xlsx"
 pathToTemplate <- "C:/Users/quent/Desktop/ARA test/temp.xlsx"
-pathToTemplate <- "C:/Users/quent/Desktop/ARA test/temp.xlsx"
+
+load_SAARA_packages(list_of_required_pckg)
 
 extract <- data_extraction(pathToExpeFolder)
 temp <- template_gen(pathToExpeFolder, pathToTemplate)
