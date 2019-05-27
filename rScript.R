@@ -59,13 +59,13 @@ custom_formula <- 0
 slope <- 495
 
 list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
-                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"))
+                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"), stringsAsFactors = FALSE)
 
 load_SAARA_packages <- function(list_of_required_pckg)
 {
    if(!require(devtools))
    {
-       install.packages("devtools")
+       install.packages("devtools", dependencies = TRUE)
        
        library(devtools)
    }
@@ -74,7 +74,7 @@ load_SAARA_packages <- function(list_of_required_pckg)
     {
         if (!require(list_of_required_pckg$pckg[i]))
         {
-            devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i])
+            devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
             
             library(list_of_required_pckg$pckg[i])
         }
