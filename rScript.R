@@ -247,7 +247,7 @@ calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 
         
         # Return the list_of_values
     list_of_values
-} ## Ok <- nodule nbr/mass have to be implemented + must improve output
+} ## Ok <- nodule nbr/mass have to be implemented as well as vial_volume + must improve output
 
 
 get_tree_path <- function(pathToExpeFolder)
@@ -437,12 +437,13 @@ data_formating_and_calc <- function(all_data, template)
     ##
     ##      - template : a data.frame carring:
     ##              - The condition identifier used in the Agilent Software during the Easy Queue setting.
-    ##              - condition_name : the identifier of the condition (name of the mutant, of the treatment, etc.)
-    ##              - sample_number : the number of this sample within a given condition.
-    ##              - incubation_hour : time when acetylene was injected in the vials (hours).
-    ##              - incubation_minutes : time when acetylene was injected in the vials (minutes).
+    ##              - condition_name :      the identifier of the condition (name of the mutant, of the treatment, etc.)
+    ##              - sample_number :       the number of this sample within a given condition.
+    ##              - incubation_hour :     time when acetylene was injected in the vials (hours).
+    ##              - incubation_minutes :  time when acetylene was injected in the vials (minutes).
     ##                      For example, if the incubation of the first sample began at 14:35,
     ##                      incubation_hour of the first line would be 14 and incubation_minutes would be 35.
+    ##              - vial_volume :         the volume of the vial in mL
     ##                  This for all experiments
     ##
     ## Output:
@@ -488,7 +489,7 @@ data_formating_and_calc <- function(all_data, template)
     
         # Return extracted_data
     result_data
-} ## Ok
+} ## Ok add vial_volume in the pipeline as well as nodule mass
 
 
 write_data <- function(result_data, save_path)
@@ -815,6 +816,15 @@ check_means <- function(result, normality_results, var_h_results)
 
 
 
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+                ########################################################################################################################
+                ##                                                   SAARA R FUNCTION                                                 ##
+                ########################################################################################################################
+
+saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar = 0.5, statThresholdNorm = 0.5, doGraphics = FALSE, colors = NA, splitFact = 5, vialVolume = 21, slope = 495)
+{
+    
+}
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
