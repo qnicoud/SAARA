@@ -70,15 +70,36 @@ load_SAARA_packages <- function(list_of_required_pckg)
        library(devtools)
    }
 
-    for ( i in 1:dim(list_of_required_pckg)[1])
+    # for ( i in 1:dim(list_of_required_pckg)[1])
+    # {
+    #     if (!require(list_of_required_pckg$pckg[i]))
+    #     {
+    #         devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
+    #         
+    #         library(list_of_required_pckg$pckg[i])
+    #     }
+    # }
+    
+    new_pckg <- list_of_required_pckg$pckg[!(list_of_required_pckg$pckg %in% installed.packages()[, "Package"])]
+    if (length(new_pckg))
     {
-        if (!require(list_of_required_pckg$pckg[i]))
+        new_pckg_ids <- which(list_of_required_pckg$pckg %in% new_pckg)
+        for (i in 1:length(new_pckg))
         {
-            devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
-            
-            library(list_of_required_pckg$pckg[i])
+            tryCatch( expr = { 
+                devtools::install_version(new_pckg[i], list_of_required_pckg$version[new_pckg_ids[i]], dependencies = TRUE)
+                library(new_pckg[i])},
+                
+                      error = function(err) {
+                        #Warning handler
+                        print(paste("ERROR_CAUGHT: ", err))
+                        next}
+                
+                      finally = {install.packages(new_pckg[i])}
+            )
         }
     }
+    
 } # To be tested
 
 unload_SAARA_packages<- function(list_of_required_pckg)
@@ -856,27 +877,6 @@ b <- check_var_h(result)
 var_h_results <- b
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-## Data designing features from previous script
-##Design data
-dt <- dt[2:nrow(dt),]
-dtData <- dt [(grep("Ac", dt[,2], fixed = TRUE, invert = TRUE)),]
-dtData <- dtData[(grep("Et", dtData[,2], fixed = TRUE, invert = TRUE)),]
-
-##Statistics
-testVTcolnames[couplesTester, i] <- paste(condNames[j], "vs", condNames[k])
-if (testVT[couplesTester,i]>=varHThreshold) 
-{ ##3 : Verify which of the tests showed significant different variances between conditions
-    isVarH[couplesTester,i] <- TRUE
-} ##Test 3 end :Verify which of the tests showed significant different variances between conditions
-else {isVarH[couplesTester,i] <- FALSE}
-
-
-
-
-
-
-
 #lt <- c(1:expeNbr)
 #isLevene <- c(1:expeNbr)
 #for (i in 1:expeNbr)
@@ -890,66 +890,3 @@ else {isVarH[couplesTester,i] <- FALSE}
 #  }
 #  else {isLevene[i] <- FALSE}
 #}
-
-
-## Testing means
-nmolArray <- as.data.frame(nmolC2H4.h.plante)
-nmolArray <- do.call(cbind,lapply(nmolArray, data.frame, stringsAsFactors = FALSE))
-colnames(nmolArray) <- expeNames
-##do.call : executes a function using its name 
-#(function to be called, argument on which it will be applied)
-##lapply apply a function over a list or vector 
-#(list/vector, function to be passed to it, optionnal arguments of the previous fonction)
-resSW <- matrix(0, nrow = condNbrPerExpe, ncol = expeNbr)
-isResNormal <- matrix(0, nrow = condNbrPerExpe, ncol = expeNbr)
-
-for (i in 1:expeNbr)
-{
-    if (sum(isNormal[,i]) == length(condNames))
-    {
-        if (sum(isVarH[,i]) == (length(combn(length(condNames), 2))/2))
-        {
-            #Graph
-            par(mar=rep(2,4)) #marge des valeurs
-            boxplot(nmolC2H4.h.plante[,i]~as.factor(allData[,"Name",i]), ylab = "nmolC2H4.h.plant")
-            #or
-            plotMeans(nmolC2H4.h.plante[,i], as.factor(allData[,"Name",i]), error.bars="se", ylab = "nmolC2H4.h.plant")
-            
-            #ANOVA1
-            AnovaModel.1 <- (lm(nmolArray[,i] ~ as.factor(allData[,"Name",i]), data= nmolArray ))
-            Anova(AnovaModel.1)
-            
-            tukey <- TukeyHSD(aov(nmolArray[,i] ~ as.factor(allData[,"Name",i]), data= nmolArray))
-            plot(tukey)
-            
-            ##Graphics Verification of residues normality
-            oldpar <- par(mar=rep(2,4),oma=rep(2,4),mfrow=c(2,2))
-            plot(AnovaModel.1)
-            par(oldpar)
-            qqPlot(AnovaModel.1, simulate=TRUE, id.method="y", id.n=2)
-            
-            ##TO DO : Verify residues normality
-            res <- AnovaModel.1$residuals
-            for (j in 1:condNbrPerExpe)
-            {
-                resSW[j,i] <- shapiro.test(res[seq(from=j, to=vialsNbrWithoutControls, by=condNbrPerExpe)])$p.value
-                if (res[j,i] >= normalityThreshold)
-                {
-                    isResNormal[j,i] <- TRUE          
-                }
-            }
-        }
-        else
-        {
-            #kruslal-wallis (not normal) ou correction de welch (oneway.test ; var not H)
-            kruskal.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]))
-            oneway.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]), var.equal = FALSE)
-        }
-    }
-    else
-    {
-        #kruslal-wallis ou ANOVA
-    }
-}
-
-##    * 0.05     ** 0.01      *** 0.001
