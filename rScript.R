@@ -19,6 +19,9 @@
 ##              An output table can be generated at this point
 ##      4 - If asked by  user the program can go further and propose to make the statistical analysis
 ##      5 - At last, a gaphical preview of the dat can be displayed (not sure if it will be implemented)
+##
+## List of functions :
+##
 
 ## TO DO LIST :
 #
@@ -170,7 +173,6 @@ unload_SAARA_packages<- function(list_of_required_pckg)
     detach("package:devtools", unload = TRUE)
 } # To be tested
 
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
                 ##                                FUNCTIONS RELATED TO DATA EXTRACTION AND CALCULATIONS                               ##
                 ########################################################################################################################
@@ -626,7 +628,6 @@ pool_expe <- function(results)
     
 }
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
                 ##                                FUNCTIONS RELATED TO DATA STATISTICAL ANALYSIS                                      ##
                 ########################################################################################################################
@@ -872,7 +873,7 @@ check_means <- function(result, normality_results, var_h_results)
             }
             else
             {
-                #kruslal-wallis (not normal) ou correction de welch (oneway.test ; var not H)
+                #kruslal-wallis (not normal) ou correction de welch (oneway.test ; var not H) + dunn test as a post-hoc test ? add the loading of the "dunn.test" package
                     #kruskal.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]))
                 oneway.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]), var.equal = FALSE)
             }
@@ -886,16 +887,14 @@ check_means <- function(result, normality_results, var_h_results)
         # Detach package
     detach("package:car", unload = TRUE)
     ##    * 0.05     ** 0.01      *** 0.001
-} # Ongoing
+} # Ongoing // move the package loading in the right test so not all packages are loaded at the beginning of the function.s
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
                 ##                                FUNCTIONS RELATED TO DATA GRAPHICAL REPRESENTATION                                  ##
                 ########################################################################################################################
 
 
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
                 ########################################################################################################################
                 ##                                                   SAARA R FUNCTION                                                 ##
                 ########################################################################################################################
