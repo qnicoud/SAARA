@@ -63,42 +63,100 @@ list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", 
 
 load_SAARA_packages <- function(list_of_required_pckg)
 {
-   if(!require(devtools))
-   {
-       install.packages("devtools", dependencies = TRUE)
-       
-       library(devtools)
-   }
 
-    # for ( i in 1:dim(list_of_required_pckg)[1])
-    # {
-    #     if (!require(list_of_required_pckg$pckg[i]))
-    #     {
-    #         devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
-    #         
-    #         library(list_of_required_pckg$pckg[i])
-    #     }
-    # }
+    ## Install and/or load packages required in the analysis.
+    ## First, it tries to use devtools to install packages versions that were used duing the developpement of this script.
+    ## Then it checks if every pacakges are indeed loaded, if not anyLib will install the last verion.
+    ##
+    ## Usage :
+    ##          output <- load_SAARA_packages(list_of_required_ pckg)
+    ##
+    ## Intput :
+    ##      - list_of_required_pckg:    a list of two component. Fisrt the list of packages to be installed and then the list of versions 
+    ##                                  in the same order as the list of packages that specifies in which version each package should be installed.
+    ##
+    ## Output :
+    ##      - are_pckg_loaded:          a vector containing logical values that specifies if each package could be loaded. Values are in the same order
+    ##                                  than in the list_of_required_pckg.
     
-    new_pckg <- list_of_required_pckg$pckg[!(list_of_required_pckg$pckg %in% installed.packages()[, "Package"])]
-    if (length(new_pckg))
+    
+    # If needed install devtools, otherwise, load it. Required for installing packages with a specific version (install_version function)
+    if(!require(devtools))
     {
-        new_pckg_ids <- which(list_of_required_pckg$pckg %in% new_pckg)
-        for (i in 1:length(new_pckg))
+        install.packages("devtools", dependencies = TRUE)
+        
+        library(devtools)
+    }
+    
+    # If needed install installR, otherwise load it. Required for installing Rtools which is needed to compile packages from source (install_version function)
+    if(!require(installr))
+    {
+        install.packages("installr", dependencies = TRUE)
+        
+        library(installr)
+    }
+    install.rtools()
+    
+    # Run through every required package
+    for ( i in 1:dim(list_of_required_pckg)[1])
+    {
+        # If required, install it at the right version
+        if (!require(list_of_required_pckg$pckg[i]))
         {
-            tryCatch( expr = { 
-                devtools::install_version(new_pckg[i], list_of_required_pckg$version[new_pckg_ids[i]], dependencies = TRUE)
-                library(new_pckg[i])},
-                
-                      error = function(err) {
-                        #Warning handler
-                        print(paste("ERROR_CAUGHT: ", err))
-                        next}
-                
-                      finally = {install.packages(new_pckg[i])}
-            )
+            devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
+            
+            library(list_of_required_pckg$pckg[i])
         }
     }
+    
+    # Then, use anylib to check the installation was successfull. If not it will install the newest version.
+    if(!require(anyLib))
+    {
+        install.packages("anyLib", dependencies = TRUE)
+        
+        library(anyLib)
+    }
+    #Store the vector containing a booleean value that specifies if the package is loaded or not.
+    are_pckgs_loaded <- anyLib::anyLib(list_of_required_pckg[[1]])
+    # Return this value
+    are_pckgs_loaded
+    
+   # if(!require(devtools))
+   # {
+   #     install.packages("devtools", dependencies = TRUE)
+   #     
+   #     library(devtools)
+   # }
+   # 
+   #  # for ( i in 1:dim(list_of_required_pckg)[1])
+   #  # {
+   #  #     if (!require(list_of_required_pckg$pckg[i]))
+   #  #     {
+   #  #         devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
+   #  #         
+   #  #         library(list_of_required_pckg$pckg[i])
+   #  #     }
+   #  # }
+   #  
+   #  new_pckg <- list_of_required_pckg$pckg[!(list_of_required_pckg$pckg %in% installed.packages()[, "Package"])]
+   #  if (length(new_pckg))
+   #  {
+   #      new_pckg_ids <- which(list_of_required_pckg$pckg %in% new_pckg)
+   #      for (i in 1:length(new_pckg))
+   #      {
+   #          tryCatch( expr = { 
+   #              devtools::install_version(new_pckg[i], list_of_required_pckg$version[new_pckg_ids[i]], dependencies = TRUE)
+   #              library(new_pckg[i])},
+   #              
+   #                    error = function(err) {
+   #                      #Warning handler
+   #                      print(paste("ERROR_CAUGHT: ", err))
+   #                      next}
+   #              
+   #                    finally = {install.packages(new_pckg[i])}
+   #          )
+   #      }
+   #  }
     
 } # To be tested
 
