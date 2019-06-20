@@ -61,8 +61,8 @@ splitV <- 5
 custom_formula <- 0
 slope <- 495
 
-list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
-                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"), stringsAsFactors = FALSE)
+list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "openxlsx", "car", "testit", "RInside"), 
+                                    version = c("1.3.1", "0.6.1", "4.1.0.1","3.0-2", "0.9", "0.2.15"), stringsAsFactors = FALSE)
 
 load_SAARA_packages <- function(list_of_required_pckg)
 {
@@ -100,15 +100,46 @@ load_SAARA_packages <- function(list_of_required_pckg)
     }
     install.rtools()
     
+    # # Run through every required package
+    # for ( i in 1:dim(list_of_required_pckg)[1])
+    # {
+    #     print(list_of_required_pckg$pckg[i])
+    #     # If required, install it at the right version
+    #     if (!require(list_of_required_pckg$pckg[i]))
+    #     {
+    #         devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
+    #         
+    #         library(list_of_required_pckg$pckg[i], character.only = TRUE)
+    #     }
+    # }
+    
     # Run through every required package
-    for ( i in 1:dim(list_of_required_pckg)[1])
-    {
+    for ( i in 1:dim(list_of_required_pckg)[1]) {
+        print(paste("Trying to install ", list_of_required_pckg$pckg[i]))
         # If required, install it at the right version
-        if (!require(list_of_required_pckg$pckg[i]))
-        {
-            devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
+        if (!require(list_of_required_pckg$pckg[i], character.only = TRUE)) {
+            tryCatch( 
+                expr = {
+                    devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], dependencies = TRUE, upgrade = "never", quiet = TRUE)
+                },
+                    
+                error = function(err) {
+                    # Error handler
+                    print(paste("ERROR_CAUGHT: ", err))
+                },
+                
+                finally = {}
+            )
             
-            library(list_of_required_pckg$pckg[i])
+            test <- require(list_of_required_pckg$pckg[i], character.only = TRUE)
+            if (!test) {
+                print(paste("devtools:install_version failed to install ", list_of_required_pckg$pckg[i], ", version: ", list_of_required_pckg$version[i], "."))
+                print("AnyLib will try to install the latest available version for this package.")
+            }
+        
+            else
+                print(paste(list_of_required_pckg$pckg[i], " was successfully installed and loaded!"))
+            
         }
     }
     
@@ -120,50 +151,67 @@ load_SAARA_packages <- function(list_of_required_pckg)
         library(anyLib)
     }
     #Store the vector containing a booleean value that specifies if the package is loaded or not.
-    are_pckgs_loaded <- anyLib::anyLib(list_of_required_pckg[[1]])
+    are_pckgs_loaded <- anyLib::anyLib(list_of_required_pckg[[1]],)
+    
     # Return this value
     are_pckgs_loaded
     
-   # if(!require(devtools))
-   # {
-   #     install.packages("devtools", dependencies = TRUE)
-   #     
-   #     library(devtools)
-   # }
-   # 
-   #  # for ( i in 1:dim(list_of_required_pckg)[1])
-   #  # {
-   #  #     if (!require(list_of_required_pckg$pckg[i]))
-   #  #     {
-   #  #         devtools::install_version(list_of_required_pckg$pckg[i], version = list_of_required_pckg$version[i], upgrade = "never")
-   #  #         
-   #  #         library(list_of_required_pckg$pckg[i])
-   #  #     }
-   #  # }
-   #  
-   #  new_pckg <- list_of_required_pckg$pckg[!(list_of_required_pckg$pckg %in% installed.packages()[, "Package"])]
-   #  if (length(new_pckg))
-   #  {
-   #      new_pckg_ids <- which(list_of_required_pckg$pckg %in% new_pckg)
-   #      for (i in 1:length(new_pckg))
-   #      {
-   #          tryCatch( expr = { 
-   #              devtools::install_version(new_pckg[i], list_of_required_pckg$version[new_pckg_ids[i]], dependencies = TRUE)
-   #              library(new_pckg[i])},
-   #              
-   #                    error = function(err) {
-   #                      #Warning handler
-   #                      print(paste("ERROR_CAUGHT: ", err))
-   #                      next}
-   #              
-   #                    finally = {install.packages(new_pckg[i])}
-   #          )
-   #      }
-   #  }
+   
+    # new_pckg <- list_of_required_pckg$pckg[!(list_of_required_pckg$pckg %in% installed.packages()[, "Package"])]
+    # if (length(new_pckg))
+    # {
+    #     new_pckg_ids <- which(list_of_required_pckg$pckg %in% new_pckg)
+    #     for (i in 1:length(new_pckg))
+    #     {
+    #         tryCatch( expr = { 
+    #             devtools::install_version(new_pckg[i], list_of_required_pckg$version[new_pckg_ids[i]], dependencies = TRUE)
+    #             library(new_pckg[i])},
+    #             
+    #             error = function(err) {
+    #                 #Warning handler
+    #                 print(paste("ERROR_CAUGHT: ", err))},
+    #             
+    #             finally = {
+    #                 install.packages(new_pckg[i])
+    #                 library(new_pckg[i])}
+    #         )
+    #     }
+    # }
+    # 
+    # remaining_pckgs <- which(!(list_of_required_pckg$pckg %in% new_pckg))
+    # for (i in remaining_pckgs)
+    # {
+    #     require(list_of_required_pckg$pckg[i])
+    # }
     
 } # To be tested
 
-unload_SAARA_packages<- function(list_of_required_pckg)
+check_SAARA_packages <- function(list_of_required_pckg, are_pckgs_loaded)
+{
+    lacking_pckgs <- list_of_required_pckg$pckg[which(!are_pckgs_loaded)]
+    
+    if (any(!are_pckgs_loaded)) {
+        print("The following packages were unable to be installed:")
+        print(paste(lacking_pckgs, sep = ", "))
+    }
+    else { print("All packages were succesfully installed and loaded!") }
+    
+    if (!is.null(lacking_pckgs)) {
+        for (i in lacking_pckgs) {
+            if (i == "readxl")
+                print("readxl could not be loaded/installed. This is critical for SAARA as it is necessary to read your data. Please fix this manually from your R console, helping with the troubleshooting page of this program. #addURL")
+            
+            if (i == "xlsx")
+                print("xlsx could not be loaded/installed. This package is required to save the processed data. This functionnality won't be available. If it is required you can copy/paste manually. Otherwise, please fix this manually from your R console, helping with the troubleshooting page of this program. #addURL")
+            
+            if (i == "car")
+                print("car could not be loaded/installed. This package is required for the statistical analysis of your data. This functionnality won't be available. If it is required, please fix this manually from your R console, helping with the troubleshooting page of this program. #addURL")
+            ## Add the rest of the packages
+        }
+    }
+} # To be completed with the rest of the packages
+
+unload_SAARA_packages <- function(list_of_required_pckg)
 {
     for ( i in 1:dim(list_of_required_pckg)[1])
     {
