@@ -27,6 +27,8 @@
 #
 #   Remark : For the embedding to options are available. One is to embed the R script into Qt using RInside.
 #                   The other is to build the Qt with R using the bioconductor package qtbase (found out that is not compatible with this R version)
+#   Other alternative for the embedding, SHINY !!! I think that I will do a first version using shiny.
+#
 #   In C++
 #       - code the GUI using Qt
 #       - add a save config function that generates an .xml or .config or .ini ? 
@@ -35,8 +37,8 @@
 #       - Re-write the code on data statistical analysis
 #       - Add varaible neccessary to the communication between R and C++
 #       - Add assertion and try
-#       - include tests on the number of arguments given to each fnctions usin 'nargs'
-#       - Find a way to maintain versions of packages and to transmit R with the application. --> devtools package
+#       - DONE: include tests on the number of arguments given to each fnctions usin 'nargs()'
+#       - DONE: Find a way to maintain versions of packages and to transmit R with the application. --> devtools package
 #       - add the nodule mass and/or weight and the vial volume in the template to be used in the different functions.
 #       - template is set up with no header. should that be added for an esaier usage of the program ?
 #       - remove package mannagement from all function as I added load_SAARA_packages an unload_SAARA_packages
@@ -73,7 +75,7 @@ load_SAARA_packages <- function(list_of_required_pckg)
     ##
     ## Usage :
     ##          output <- load_SAARA_packages(list_of_required_ pckg)
-    ##
+    #
     ## Intput :
     ##      - list_of_required_pckg:    a list of two component. Fisrt the list of packages to be installed and then the list of versions 
     ##                                  in the same order as the list of packages that specifies in which version each package should be installed.
@@ -82,6 +84,10 @@ load_SAARA_packages <- function(list_of_required_pckg)
     ##      - are_pckg_loaded:          a vector containing logical values that specifies if each package could be loaded. Values are in the same order
     ##                                  than in the list_of_required_pckg.
     
+    # Test if at least one argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'list_of_required_pckg' is missing, with no default.")
+    }
     
     # If needed install devtools, otherwise, load it. Required for installing packages with a specific version (install_version function)
     if(!require(devtools))
@@ -98,6 +104,7 @@ load_SAARA_packages <- function(list_of_required_pckg)
         
         library(installr)
     }
+    
     install.rtools()
     
     # # Run through every required package
@@ -184,10 +191,15 @@ load_SAARA_packages <- function(list_of_required_pckg)
     #     require(list_of_required_pckg$pckg[i])
     # }
     
-} # To be tested
+} # Seems to work on my computer
 
 check_SAARA_packages <- function(list_of_required_pckg, are_pckgs_loaded)
 {
+    # Test if the arguments are given to the function
+    if (nargs() < 2) {
+        stop("arguments 'list_of_required_pckg' or/and 'are_pckgs_loaded' are missing, with no default.")
+    }
+    
     lacking_pckgs <- list_of_required_pckg$pckg[which(!are_pckgs_loaded)]
     
     if (any(!are_pckgs_loaded)) {
@@ -204,6 +216,9 @@ check_SAARA_packages <- function(list_of_required_pckg, are_pckgs_loaded)
             if (i == "xlsx")
                 print("xlsx could not be loaded/installed. This package is required to save the processed data. This functionnality won't be available. If it is required you can copy/paste manually. Otherwise, please fix this manually from your R console, helping with the troubleshooting page of this program. #addURL")
             
+            if (i == "openxlsx")
+                print("openxlsx could not be loaded/installed. This package is required by car and sometimes don't get properly installed. If not present, you should also get the error message related to car. Refer to the mentionned message for further informations.")
+            
             if (i == "car")
                 print("car could not be loaded/installed. This package is required for the statistical analysis of your data. This functionnality won't be available. If it is required, please fix this manually from your R console, helping with the troubleshooting page of this program. #addURL")
             ## Add the rest of the packages
@@ -213,13 +228,19 @@ check_SAARA_packages <- function(list_of_required_pckg, are_pckgs_loaded)
 
 unload_SAARA_packages <- function(list_of_required_pckg)
 {
+    # Test if at least one argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'list_of_required_pckg' is missing, with no default.")
+    }
+    
     for ( i in 1:dim(list_of_required_pckg)[1])
     {
-        detach(paste("package", list_of_required_pckg$pckg[i], sep = ""), unload = TRUE)
+        detach(paste("package", list_of_required_pckg$pckg[i], sep = ":"), unload = TRUE, character.only = TRUE)
     }
     
     detach("package:devtools", unload = TRUE)
-} # To be tested
+    detach("package:anyLib", unload = TRUE)
+} # Not working
 
                 ########################################################################################################################
                 ##                                FUNCTIONS RELATED TO DATA EXTRACTION AND CALCULATIONS                               ##
@@ -239,7 +260,7 @@ trim_file_path <- function(file_path)
     ## Output:
     ##      - trimmed_string :  the string containning only the folder/file name. 
     
-    if (nargs <= 1)
+    if (nargs() <= 1)
     {
         
     }
@@ -252,7 +273,7 @@ trim_file_path <- function(file_path)
 
 
 calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial_volume = 21, splitV = 5, 
-                                       customFormula = 0, nodule_weight = c(), nodule_number = c())
+                                       customFormula = 0, nodule_weight = NULL, nodule_number = NULL)
 {
     ## Function that calculates the nitrogenase activity in nmol of ethylene produced per hour and per plant
     ##
@@ -261,7 +282,7 @@ calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial
     ##                                               customFormula = 0, nodule_weight = c(), nodule_number = c())
     ##
     ## The default formula is:
-    ##          nmolC2H4_H_Plant <- ( pA_s / delta_time ) * (vial_volume / slope) * 60 * splitV
+    ##          nmolC2H4_H_Plant <- ( pA_s / delta_time ) * ( vial_volume / slope ) * 60 * splitV
     ## Input:
     ##      - pA_s :            raw data from the machine (pA.s-1)
     ##
@@ -286,6 +307,11 @@ calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial
     ##
     ## Outout:
     ##      - nmolC2H4_H_Plant: a double variable containing the processed value.
+    
+        # Test if at least one argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'pA_s' is missing, with no default.")
+    }
 
         # The following test allows to change the formula if the user wants to.
     if (customFormula == 0)
@@ -362,6 +388,10 @@ calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 
     ##                              - sample_id (see the input extracted_data)
     ##                              - nmolC2H4_H_Plant: the processed data.
     
+    # Test if at least one argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'extracted_data' is missing, with no default.")
+    }
     
         # Create a data.frame that will contain the processed data
     list_of_values <- data.frame(condition_name = extracted_data[,1], sample_id = extracted_data[,2], 
@@ -392,7 +422,11 @@ get_tree_path <- function(pathToExpeFolder)
     ## Output:
     ##      -sample_folders :       a data.frame containing the name of the folders of each samples in every experiment. 
     ##                              Each column of the data.frame is named after the experience folder.
-
+    
+    # Test if the argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'pathToExpeFolder' is missing, with no default.")
+    }
     
         # List all experiment folders.
     expe_folder <- list.dirs(pathToExpeFolder, recursive = FALSE, full.names = FALSE)
@@ -437,10 +471,14 @@ data_extraction <- function(pathToExpeFolder)
     ##                                  - ethylene_MeasRetTime : measured retention time.
     ##                                  - area : values of pA_s-1 measured by the FID.
     
+    # Test if the argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'pathToExpeFolder' is missing, with no default.")
+    }
     
         # Load readxl, and if not installed, install it.
-    if (!require(readxl))
-    {
+    if (!require(readxl)) {
+        warning("readxl was not installed prior to the use of this function. Latest version will be installed which could be incompatible wit the current environnment set-up.")
         install.packages("readxl")
         library(readxl)
     }
@@ -525,10 +563,14 @@ template_gen <- function(pathToExpeFolder, path_to_template)
     ## Output:
     ##      - template : data.frame aving the same composition as the excel file
     
+    # Test if the arguments are given to the function
+    if (nargs() < 2) {
+        stop("arguments 'pathToExpeFolder' or/and 'path_to_template' are missing, with no default.")
+    }
     
         # Load readxl, and if not installed, install it.
-    if (!require(readxl))
-    {
+    if (!require(readxl)) {
+        warning("readxl was not installed prior to the use of this function. Latest version will be installed which could be incompatible wit the current environnment set-up.")
         install.packages("readxl")
         library(readxl)
     }
@@ -581,6 +623,10 @@ data_formating_and_calc <- function(all_data, template)
     ##              - sample_number
     ##              - nmolC2H4_H_Plant : values of processed data.
     
+    # Test if the arguments are given to the function
+    if (nargs() < 2) {
+        stop("arguments 'all_data' or/and 'template' are missing, with no default.")
+    }
     
         # Generate the output data.frame
     result_data <- lapply(names(all_data), function(x) 0)
@@ -636,10 +682,14 @@ write_data <- function(result_data, save_path)
     ## Output:
     ##      - none : this function should only save the data and return nothing
     
+    # Test if the arguments are given to the function
+    if (nargs() < 2) {
+        stop("arguments 'result_data' or/and 'save_path' are missing, with no default.")
+    }
     
     # Load xlsx, and if not installed, install it.
-    if (!require(xlsx))
-    {
+    if (!require(xlsx)) {
+        warning("xlsx was not installed prior to the use of this function. Latest version will be installed which could be incompatible wit the current environnment set-up.")
         install.packages("xlsx")
         library(xlsx)
     }
@@ -664,6 +714,12 @@ write_data <- function(result_data, save_path)
 
 remove_controls <- function(template)
 {
+    
+    # Test if the argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'template' is missing, with no default.")
+    }
+    
     for (i in 1:length(names(template)))
     {
         template[which(template[[i]][,2] == "control"),1]
@@ -700,6 +756,10 @@ check_normality <- function(result, normalityThreshold = 0.05)
     ##              - boolean_result :  the result of the test transformed into boolean values.
     ##                                  Based on the threshold given as second input.
     
+    # Test if the argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'result' is missing, with no default.")
+    }
     
     expeNbr <- length(names(result))
     
@@ -769,6 +829,11 @@ check_var_h <- function(result, varHThreshold = 0.05)
     ##
     ##              - boolean_result :  the result of the test transformed into boolean values.
     ##                                  Based on the threshold given as second input.
+    
+    # Test if the argument is given to the function
+    if (nargs() < 1) {
+        stop("argument 'result' is missing, with no default.")
+    }
     
     expeNbr <- length(names(result))
     
@@ -866,10 +931,15 @@ check_means <- function(result, normality_results, var_h_results)
     ##                                  - 
     
     
-    if (!require(car))
-    {
+    # Test if the arguments are given to the function
+    if (nargs() < 1) {
+        stop("arguments 'result' or/and 'normality_results' or/and 'var_h_results' is missing, with no default.")
+    }
+    
+    
+    if (!require(car)) {
+        warning("car was not installed prior to the use of this function. Latest version will be installed which could be incompatible wit the current environnment set-up.")
         install.packages('car')
-        
         library(car)
     }
     
@@ -942,7 +1012,6 @@ check_means <- function(result, normality_results, var_h_results)
                 ########################################################################################################################
 
 
-
                 ########################################################################################################################
                 ##                                                   SAARA R FUNCTION                                                 ##
                 ########################################################################################################################
@@ -950,7 +1019,7 @@ check_means <- function(result, normality_results, var_h_results)
 saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar = 0.5, statThresholdNorm = 0.5, doGraphics = FALSE, colors = NA, splitFact = 5, vialVolume = 21, slope = 495)
 {
     
-}
+} # To be done
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -960,10 +1029,10 @@ list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", 
                                     version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"))
 
 pathToExpeFolder <- "C:/Users/quentin.nicoud/Desktop/ARA test"
-pathToExpeFolder <- "C:/Users/quent/Desktop/ARA test"
+pathToExpeFolder <- "D:/Work/Temp Work/ARA test"
 
 pathToTemplate <- "C:/Users/quentin.nicoud/Desktop/ARA test/temp.xlsx"
-pathToTemplate <- "C:/Users/quent/Desktop/ARA test/temp.xlsx"
+pathToTemplate <- "D:/Work/Temp Work/ARA test/temp.xlsx"
 
 load_SAARA_packages(list_of_required_pckg)
 
