@@ -240,7 +240,7 @@ unload_SAARA_packages <- function(list_of_required_pckg)
     
     detach("package:devtools", unload = TRUE)
     detach("package:anyLib", unload = TRUE)
-} # Not working
+} # Ok but is it relevant ?
 
                 ########################################################################################################################
                 ##                                FUNCTIONS RELATED TO DATA EXTRACTION AND CALCULATIONS                               ##
@@ -932,7 +932,7 @@ check_means <- function(result, normality_results, var_h_results)
     
     
     # Test if the arguments are given to the function
-    if (nargs() < 1) {
+    if (nargs() < 3) {
         stop("arguments 'result' or/and 'normality_results' or/and 'var_h_results' is missing, with no default.")
     }
     
