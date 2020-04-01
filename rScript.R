@@ -952,8 +952,10 @@ check_means <- function(result, normality_results, var_h_results)
         
         if (sum(normality_results[[i]]$boolean_result, na.rm = TRUE) == length(condNames))
         {
+            print("All variables have a normal distribution.")
             if (sum(var_h_results[[i]]$boolean_results, na.rm = TRUE) == combNbr)
             {
+                print("All variables have a homoscedastic variance.")
                 #Graph
                 #par(mar=rep(2,4)) #marge des valeurs
                 #boxplot(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), ylab = "nmolC2H4.h.plant")
@@ -991,6 +993,7 @@ check_means <- function(result, normality_results, var_h_results)
             }
             else
             {
+                print("nope")
                 #kruslal-wallis (not normal) ou correction de welch (oneway.test ; var not H) + dunn test as a post-hoc test ? add the loading of the "dunn.test" package
                     #kruskal.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]))
                 oneway.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]), var.equal = FALSE)
@@ -999,6 +1002,7 @@ check_means <- function(result, normality_results, var_h_results)
         else
         {
             #kruslal-wallis
+            kruskal.test(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name))
         }
     }
     
@@ -1011,7 +1015,7 @@ check_means <- function(result, normality_results, var_h_results)
                 ##                                FUNCTIONS RELATED TO DATA GRAPHICAL REPRESENTATION                                  ##
                 ########################################################################################################################
 
-
+##Include GGplot2, look for violin plots to represent the ARA results.
                 ########################################################################################################################
                 ##                                                   SAARA R FUNCTION                                                 ##
                 ########################################################################################################################
@@ -1050,6 +1054,7 @@ normality_results <- a
 b <- check_var_h(result)
 var_h_results <- b
 
+check_means(result, normality_results, var_h_results)
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
 #lt <- c(1:expeNbr)
 #isLevene <- c(1:expeNbr)
