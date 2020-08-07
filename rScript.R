@@ -105,7 +105,8 @@ load_SAARA_packages <- function(list_of_required_pckg)
         library(installr)
     }
     
-    install.rtools()
+    if (install.rtools(check = TRUE))
+        install.rtools()
     
     # # Run through every required package
     # for ( i in 1:dim(list_of_required_pckg)[1])
@@ -400,7 +401,7 @@ calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 
         # Loop that will go through every sample in the extracted_data data.frame and use the function calculate_nmolC2H4_h_plant to process the data.
     for (i in 1:dim(extracted_data)[1])
     {
-        delta_time <- extracted_data[[i,6]]*60 + extracted_data[[i,5]] - extracted_data[[i,4]]*60 + extracted_data[[i,3]]
+        delta_time <- (extracted_data[[i,6]] + extracted_data[[i,5]]*60) - (extracted_data[[i,4]] + extracted_data[[i,3]]*60)
         list_of_values[i,3] = calculate_nmolC2H4_H_Plant(pA_s = extracted_data[i,7], delta_time, slope, vial_volume, splitV, custom_formula, nodule_weight = c(), nodule_number = c())
     }
         
@@ -449,7 +450,7 @@ get_tree_path <- function(pathToExpeFolder)
 } ## Ok <- add strmatch to rmv unwanted folders and other stuff. (done I think)
 
 
-data_extraction <- function(pathToExpeFolder)
+data_extraction <- function(pathToExpeFolder, expected_peak_ret_time = 1.65)
 {
     ## Function that extract the data from the tree.
     ## Based on the position of each peaks in our assays. May be different for other experimental designs (this function can be improved).
@@ -500,31 +501,87 @@ data_extraction <- function(pathToExpeFolder)
         for (j in paths[[i]])
         {
             temp_peak_data <- read_xls(paste(pathToExpeFolder, i, j, "REPORT01.xls", sep = '/'), sheet = "Peak")[,1:15] # Read data
+            temp_peak_data$IntPeakType <- tidyr::replace_na(temp_peak_data$IntPeakType, 'a') # Remove Na and replace them by a
+            temp_peak_data$HeaderName <- tidyr::replace_na(temp_peak_data$HeaderName, 'a') # Remove Na and replace them by a
+            temp_peak_data$HeaderValue <- tidyr::replace_na(temp_peak_data$HeaderValue, 'a') # Remove Na and replace them by a.
+            
             temp_peak_data[is.na(temp_peak_data)] <- 0 # Remove Na and replace them by zeros.
             
-                # Identify the peak that holds the ethylene value, based on the measured retention time.
-            ratioRetTime <- temp_peak_data$MeasRetTime/max(temp_peak_data$MeasRetTime) # This makes a ratio between values of each 
-                                                                                        # peak and the max value of these values.
-            pos <- which(ratioRetTime == 1)-1   # Get only the value before the acetylene
-            while (temp_peak_data$MeasRetTime[pos] == 0) # Sometimes the predicted elution time of the different 
-                                                         # compounds interfers with the measured elution time. To avoid that,
-                                                         # this loop searches for the first value in the MeasRetTime that is different to zero.
-            {
-                pos = pos - 1
-                if (pos == 1)
-                {
-                    ## error
-                    break
-                }
-            }
-            
+            #     # Identify the peak that holds the ethylene value, based on the measured retention time.
+            # ratioRetTime <- temp_peak_data$MeasRetTime/max(temp_peak_data$MeasRetTime) # This makes a ratio between values of each 
+            #                
             temp_base_info <- read_xls(paste(pathToExpeFolder, i, j, "REPORT01.xls", sep = '/'), sheet = "Sheet1") # Read info data
             
-            data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
-                              substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-                              substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-                              temp_peak_data$MeasRetTime[pos], temp_peak_data$Area[pos])) # Store everything into one data.frame
-                    }
+            test_name_variable <- c(is.na(temp_base_info[temp_base_info[,1]=="SampleName",2]), is.na(temp_base_info[temp_base_info[,1]=="SampleInfo",2]))
+            
+            # if (sum(is.nan(ratioRetTime)) == 0) {
+            #                                                # peak and the max value of these values.
+            #     pos <- which(ratioRetTime == 1)-1   # Get only the value before the acetylene
+            #     while (temp_peak_data$MeasRetTime[pos] == 0) # Sometimes the predicted elution time of the different 
+            #                                                  # compounds interfers with the measured elution time. To avoid that,
+            #                                                  # this loop searches for the first value in the MeasRetTime that is different to zero.
+            #     {
+            #         pos = pos - 1
+            #         if (pos == 1)
+            #         {
+            #             ## error
+            #             break
+            #         }
+            #     }
+            #     
+            #     if (!test_name_variable[1]) {
+            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleName",2]),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+            #                               temp_peak_data$MeasRetTime[pos], temp_peak_data$Area[pos])) # Store everything into one data.frame
+            #     }
+            #     else if (!test_name_variable[2]) {
+            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+            #                               temp_peak_data$MeasRetTime[pos], temp_peak_data$Area[pos])) # Store everything into one data.frame
+            #     }
+            #     else {
+            #         stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
+            #     }
+            # }
+            # else {
+            #     if (!test_name_variable[1]) {
+            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleName",2]),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+            #                               NA, NA)) # Store everything into one data.frame
+            #     }
+            #     else if (!test_name_variable[2]) {
+            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+            #                               NA, NA)) # Store everything into one data.frame
+            #     }
+            #     else {
+            #         stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
+            #     }
+            # }
+            
+            find_closest_peak <- temp_peak_data$MeasRetTime - expected_peak_ret_time
+            closest_peak <- which(abs(find_closest_peak) == min(abs(find_closest_peak)))
+            
+            if (!test_name_variable[1]) {
+                data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleName",2]),
+                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+                                      temp_peak_data$MeasRetTime[closest_peak], temp_peak_data$Area[closest_peak])) # Store everything into one data.frame
+            }
+            else if (!test_name_variable[2]) {
+                data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
+                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+                                      temp_peak_data$MeasRetTime[closest_peak], temp_peak_data$Area[closest_peak])) # Store everything into one data.frame
+            }
+            else {
+                stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
+            }
+        }
         data <- data[2:dim(data)[1],] # Trim the first row of the data.frame which only contains zeros
         all_data[[i]] <- data # Store the data frame in the all_data list.
     }
@@ -543,7 +600,7 @@ template_gen <- function(pathToExpeFolder, path_to_template)
     ## The given file must be an .xls or .xlsx and must be present in the folder
     ## which path is given by pathToExpeFolder. The tables must not have headers.
     ## This file must carry one sheet per experiment, detailling for each sample the necessary data:
-    ##              - The condition identifier used in the Agilent Software during the Easy Queue setting.
+    ##              - The condition identifier of each sample used in the Agilent Software during the Easy Queue setting.
     ##              - condition_name : the identifier of the condition (name of the mutant, of the treatment, etc.)
     ##              - sample_number : the number of this sample within a given condition.
     ##              - incubation_hour : time when acetylene was injected in the vials (hours).
@@ -648,14 +705,11 @@ data_formating_and_calc <- function(all_data, template)
             # Recover data from the template data and assign it to the correct row in extraced_data
         for (j in 1:dim(template[[i]])[1])
         {
-                # Get the indice of the sample_id that correspond to the actual row in template
-            pos <- which(all_data[[i]]["sample_id"] == unlist(template[[i]][j,1]))
-            
-                # Assign data to extracted_data
-            extracted_data[pos, "condition_name"] <- unlist(template[[i]][j,2])
-            extracted_data[pos, "sample_number"] <- unlist(template[[i]][j,3])
-            extracted_data[pos, "incubation_hour"] <- as.numeric(unlist(template[[i]][j,4]))
-            extracted_data[pos, "incubation_minutes"] <- as.numeric(unlist(template[[i]][j,5]))
+            # Assign data to extracted_data
+            extracted_data[j, "condition_name"] <- unlist(template[[i]][j,2])
+            extracted_data[j, "sample_number"] <- unlist(template[[i]][j,3])
+            extracted_data[j, "incubation_hour"] <- as.numeric(unlist(template[[i]][j,4]))
+            extracted_data[j, "incubation_minutes"] <- as.numeric(unlist(template[[i]][j,5]))
         }
         
         
@@ -712,25 +766,43 @@ write_data <- function(result_data, save_path)
 } ## Ok <- overwrite to be reviewed
 
 
-remove_controls <- function(template)
+remove_controls <- function(results)
 {
-    
     # Test if the argument is given to the function
     if (nargs() < 1) {
-        stop("argument 'template' is missing, with no default.")
+        stop("argument 'results' is missing, with no default.")
     }
     
-    for (i in 1:length(names(template)))
+    trimmed <- lapply(results, names)
+    for (i in 1:length(names(results)))
     {
-        template[which(template[[i]][,2] == "control"),1]
+        trimmed[[i]] <- results[[i]][-which(results[[i]][,1] == "control"),]
         
     }
+    trimmed
 } ## Ongoing
 
-pool_expe <- function(results)
+
+pool_expe <- function(results, pooling_ref, template)
 {
+    # Test if the argument is given to the function
+    if (nargs() < 2) {
+        stop("arguments 'results' and/or 'pooling_ref' are missing, with no default.")
+    }
     
-}
+    pooled_results <- lapply(pooling_ref, names)
+    pooled_temp <- lapply(pooling_ref, names)
+    
+    for (i in names(pooling_ref)) {
+        for (j in pooling_ref[[i]]) {
+            pooled_results[[i]] <- rbind(pooled_results[[i]], results[[j]])
+            pooled_temp[[i]] <- rbind(pooled_temp[[i]], template[[j]])
+        }
+    }
+    all_pooled <- list(pooled_results, pooled_temp)
+    
+    all_pooled
+} ## To Do
 
                 ########################################################################################################################
                 ##                                FUNCTIONS RELATED TO DATA STATISTICAL ANALYSIS                                      ##
@@ -861,7 +933,7 @@ check_var_h <- function(result, varHThreshold = 0.05)
                     # Verify that the combination has not been tested yet
                 if (is.na(p_values[j[1], j[2]]) && is.na(p_values[j[2], j[1]]))
                 {
-                    if (length(result[[i]][j[1],"nmolC2H4_H_plant"]) > 3 && length(result[[i]][j[2],"nmolC2H4_H_plant"]) > 3)
+                    if (length(result[[i]][result[[i]][,1] == j[1],"nmolC2H4_H_plant"]) > 3 && length(result[[i]][result[[i]][,1] == j[2],"nmolC2H4_H_plant"]) > 3)
                     {
                         p_values[j[1], j[2]] <- var.test(result[[i]][j[1],"nmolC2H4_H_plant"], 
                                                          result[[i]][j[2],"nmolC2H4_H_plant"])$p.value
@@ -1030,21 +1102,39 @@ saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar 
 ## Temp script
 
 list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
-                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15"))
+                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15")) ## needs tidyr also
 
-pathToExpeFolder <- "C:/Users/quentin.nicoud/Desktop/ARA test"
+pooling_ref <- list(Mt = c(1:6), Ms = c(7:11))
+
+pathToExpeFolder <- "C:/Users/quent/Desktop/arayej"
 pathToExpeFolder <- "D:/Work/Temp Work/ARA test"
 
-pathToTemplate <- "C:/Users/quentin.nicoud/Desktop/ARA test/temp.xlsx"
+pathToTemplate <- "C:/Users/quent/Desktop/arayej/temp2.xlsx"
 pathToTemplate <- "D:/Work/Temp Work/ARA test/temp.xlsx"
 
 load_SAARA_packages(list_of_required_pckg)
 
-extract <- data_extraction(pathToExpeFolder)
+extract <- data_extraction(pathToExpeFolder, 1.65)
 temp <- template_gen(pathToExpeFolder, pathToTemplate)
-res <- data_formating_and_calc(extract, temp)
 
-write_data(all_data, "F:/ARA2/results.xlsx")
+pool_all <- pool_expe(extract, pooling_ref, temp)
+
+##Temp / spe to yejara expe
+clean_table <- function(pool_extract) {
+    mtNi <- pool_extract[[2]][seq(from = 112, to = 120, by = 2),]
+    pool_extract[[1]] <- rbind(pool_extract[[1]], mtNi)
+    pool_extract[[2]] <- pool_extract[[2]][-seq(from = 112, to = 120, by = 2),]
+    
+    pool_extract
+}
+pool_all <- lapply(pool_all, clean_table)
+
+
+res <- data_formating_and_calc(pool_all[[1]], pool_all[[2]])
+
+res <- remove_controls(res)
+
+write_data(res, "C:/Users/quent/Desktop/arayej/results.xlsx")
 
 result <- res
 result[[1]] <- res[[1]][3:dim(res[[1]])[1],]
@@ -1055,6 +1145,16 @@ b <- check_var_h(result)
 var_h_results <- b
 
 check_means(result, normality_results, var_h_results)
+
+
+
+
+
+
+boxplot(result[[1]]$nmolC2H4_H_plant~result[[1]]$condition_name)
+
+
+
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
 #lt <- c(1:expeNbr)
 #isLevene <- c(1:expeNbr)
