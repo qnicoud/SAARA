@@ -45,16 +45,9 @@
 
 rm(list = ls())
 
-#install.packages('openxlsx', 'xlsx', 'gdata', 'readxl', 'RInside')
-library(RInside)
+#### PACKAGE MANAGEMENT AND IMPORTANT VARIABLES --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
-                ########################################################################################################################
-                ##                                  CODE RELATED TO THE FUNCTIONNING OF THE PIPELINE                                  ##
-                ########################################################################################################################
-
-# Varaible that should recieve input from the C++ programm
+# Variable that should recieve input from the C++ programm
 normalityThreshold <- 0.05
 varHThreshold <- 0.05
 poolData <- FALSE ##TRUE = testing several mutants OR repetition ##FALSE = kinetics
@@ -159,7 +152,7 @@ load_SAARA_packages <- function(list_of_required_pckg)
         library(anyLib)
     }
     #Store the vector containing a booleean value that specifies if the package is loaded or not.
-    are_pckgs_loaded <- anyLib::anyLib(list_of_required_pckg[[1]],)
+    are_pckgs_loaded <- anyLib::anyLib(list_of_required_pckg[[1]])
     
     # Return this value
     are_pckgs_loaded
@@ -243,9 +236,20 @@ unload_SAARA_packages <- function(list_of_required_pckg)
     detach("package:anyLib", unload = TRUE)
 } # Ok but is it relevant ?
 
-                ########################################################################################################################
-                ##                                FUNCTIONS RELATED TO DATA EXTRACTION AND CALCULATIONS                               ##
-                ########################################################################################################################
+init_env <- function(list_of_required_pckg, wd)
+{
+    test <- load_SAARA_packages(list_of_required_pckg)
+    
+    check_SAARA_packages(list_of_required_pckg, test)
+    
+    setwd(wd)
+} # OK ?
+
+
+
+
+
+#### DATA EXTRACTION AND CALCULATIONS --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 trim_file_path <- function(file_path)
 {
@@ -804,9 +808,11 @@ pool_expe <- function(results, pooling_ref, template)
     all_pooled
 } ## To Do
 
-                ########################################################################################################################
-                ##                                FUNCTIONS RELATED TO DATA STATISTICAL ANALYSIS                                      ##
-                ########################################################################################################################
+
+
+
+
+#### STATISTICAL ANALYSIS --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 check_normality <- function(result, normalityThreshold = 0.05)
 {
@@ -933,10 +939,10 @@ check_var_h <- function(result, varHThreshold = 0.05)
                     # Verify that the combination has not been tested yet
                 if (is.na(p_values[j[1], j[2]]) && is.na(p_values[j[2], j[1]]))
                 {
-                    if (length(result[[i]][result[[i]][,1] == j[1],"nmolC2H4_H_plant"]) > 3 && length(result[[i]][result[[i]][,1] == j[2],"nmolC2H4_H_plant"]) > 3)
+                    if (sum(result[[i]][,1] == j[1]) > 3 && sum(result[[i]][,1] == j[2]) > 3)
                     {
-                        p_values[j[1], j[2]] <- var.test(result[[i]][j[1],"nmolC2H4_H_plant"], 
-                                                         result[[i]][j[2],"nmolC2H4_H_plant"])$p.value
+                        p_values[j[1], j[2]] <- var.test(result[[i]][result[[i]][,1] == j[1],"nmolC2H4_H_plant"], 
+                                                         result[[i]][result[[i]][,1] == j[2],"nmolC2H4_H_plant"])$p.value
                     }
                     else
                         p_values[j[1], j[2]] <- 2
@@ -1083,23 +1089,87 @@ check_means <- function(result, normality_results, var_h_results)
     ##    * 0.05     ** 0.01      *** 0.001
 } # Ongoing // move the package loading in the right test so not all packages are loaded at the beginning of the function.s
 
-                ########################################################################################################################
-                ##                                FUNCTIONS RELATED TO DATA GRAPHICAL REPRESENTATION                                  ##
-                ########################################################################################################################
+
+
+
+
+#### GRAPHICAL REPRESENTATION --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ##Include GGplot2, look for violin plots to represent the ARA results.
-                ########################################################################################################################
-                ##                                                   SAARA R FUNCTION                                                 ##
-                ########################################################################################################################
+
+save_bmp <- function(plots, awidth = 1000, aheight = 850, unit = "px") 
+{
+    while (!is.null(dev.list()))  dev.off()
+    
+    for ( i in 1:length(plots)) {
+        bmp(file = paste(names(plots)[i], ".bmp", sep = ""), width = awidth, height = aheight, units = unit)
+        print(plots[[i]])
+        dev.off()
+    }
+}
+
+save_jpg <- function(plots, awidth = 1000, aheight = 850, unit = "px", quality = 75) 
+{
+    while (!is.null(dev.list()))  dev.off()
+    
+    for ( i in 1:length(plots)) {
+        jpeg(file = paste(names(plots)[i], ".jpeg", sep = ""), width = awidth, height = aheight, units = unit, quality = quality)
+        print(plots[[i]])
+        dev.off()
+    }
+}
+
+save_png <- function(plots, awidth = 1000, aheight = 850, unit = "px") 
+{
+    while (!is.null(dev.list()))  dev.off()
+    
+    for ( i in 1:length(plots)) {
+        png(file = paste(names(plots)[i], ".png", sep = ""), width = awidth, height = aheight, units = unit)
+        print(plots[[i]])
+        dev.off()
+    }
+}
+
+save_tiff <- function(plots, awidth = 1000, aheight = 850, unit = "px", compression = 'none') 
+{
+    while (!is.null(dev.list()))  dev.off()
+    
+    for ( i in 1:length(plots)) {
+        tiff(file = paste(names(plots)[i], ".tiff", sep = ""), width = awidth, height = aheight, units = unit, compression = compression)
+        print(plots[[i]])
+        dev.off()
+    }
+}
+
+save_pdf <- function(plots, awidth = 1000, aheight = 850, unit = "px", compression = 'none') 
+{
+    while (!is.null(dev.list()))  dev.off()
+    
+    for ( i in 1:length(plots)) {
+        pdf(file = paste(names(plots)[i], ".pdf", sep = ""), width = awidth, height = aheight, units = unit)
+        print(plots[[i]])
+        dev.off()
+    }
+}
+
+select_format(format, plots)
+{
+    
+} ## P To do rompt user with further arguments to pass to the chosen function
+
+
+#### SAARA R FUNCTION --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar = 0.5, statThresholdNorm = 0.5, doGraphics = FALSE, colors = NA, splitFact = 5, vialVolume = 21, slope = 495)
 {
     
 } # To be done
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-## Temp script
+
+
+
+#### CODE TESTING ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
                                     version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15")) ## needs tidyr also
@@ -1107,15 +1177,13 @@ list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", 
 pooling_ref <- list(Mt = c(1:6), Ms = c(7:11))
 
 pathToExpeFolder <- "C:/Users/quent/Desktop/arayej"
-pathToExpeFolder <- "D:/Work/Temp Work/ARA test"
 
-pathToTemplate <- "C:/Users/quent/Desktop/arayej/temp2.xlsx"
-pathToTemplate <- "D:/Work/Temp Work/ARA test/temp.xlsx"
+init_env(list_of_required_pckg, pathToExpeFolder)
 
-load_SAARA_packages(list_of_required_pckg)
+pathToTemplate <- paste(getwd(), "/temp2.xlsx")
 
-extract <- data_extraction(pathToExpeFolder, 1.65)
-temp <- template_gen(pathToExpeFolder, pathToTemplate)
+extract <- data_extraction(getwd(), 1.65)
+temp <- template_gen(getwd(), pathToTemplate)
 
 pool_all <- pool_expe(extract, pooling_ref, temp)
 
@@ -1150,9 +1218,64 @@ check_means(result, normality_results, var_h_results)
 
 
 
+ref <- list(
+    Mt = matrix(c("Ni_Mt", "WT", "bacA", "rpoH1", "lpsB", "lpxXL", "yejA", "yejE", "yejF", 
+                "Controls", "Controls", "Controls", "Enveloppe functions", "Enveloppe functions", "Enveloppe functions", "yej transporter", "yej transporter", "yej transporter",
+                1, 2, 3, 1, 2, 3, 1, 2, 3), 
+              ncol = 3),
+    Ms =  matrix(c("NI_Ms", "WT", "bacA", "rpoH1", "lpsB", "lpxXL", "yejA", "yejE", "yejF", 
+                 "Controls", "Controls", "Controls", "Enveloppe functions", "Enveloppe functions", "Enveloppe functions", "yej transporter", "yej transporter", "yej transporter",
+                 1, 2, 3, 1, 2, 3, 1, 2, 3), 
+               ncol = 3))
+
+fun <- function(result_ref) {
+    x <- c()
+    y <- c()
+    
+    for (i in 1:dim(result_ref$result)[1]) {
+        x[i] <- result_ref$ref[which(result_ref$ref == result_ref$result$condition_name[i]),2]
+        y[i] <- result_ref$ref[which(result_ref$ref == result_ref$result$condition_name[i]),3]
+        
+    }
+    result_ref$result <- cbind(result_ref$result, class = x)
+    result_ref$result <- cbind(result_ref$result, ord = as.numeric(y))
+    
+    result_ref
+}
+
+resultTest <- lapply(list( Mt = list(result = result$Mt, ref = ref$Mt), Ms = list(result = result$Ms, ref = ref$Ms)), fun)
+result$Mt <- resultTest$Mt$result
+result$Ms <- resultTest$Ms$result
 
 boxplot(result[[1]]$nmolC2H4_H_plant~result[[1]]$condition_name)
 
+library(ggplot2)
+
+plots <- list( Mt =
+    ggplot(result$Mt, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) + 
+    geom_boxplot(size = 1.5) +
+    facet_grid(~class, scales = "free") + 
+    scale_x_reordered() +
+    scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
+    labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
+    theme(legend.position = "none",
+          strip.text = element_text(size = 24, face="bold"),
+          axis.title.y = element_text(size = 22),
+          axis.text.y = element_text(size = 20))
+             , Ms = 
+    ggplot(result$Ms, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) + 
+    geom_boxplot(size = 1.5) +
+    facet_grid(~class, scales = "free") + 
+    scale_x_reordered() +
+    scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
+    labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
+    theme(legend.position = "none",
+          strip.text = element_text(size = 24, face="bold"),
+          axis.title.y = element_text(size = 22),
+          axis.text.y = element_text(size = 20))
+)
+
+save_bmp(plots, awidth = 1100, aheight = 500)
 
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
