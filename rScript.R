@@ -968,7 +968,7 @@ check_var_h <- function(result, varHThreshold = 0.05)
     varH
 } ## Ok
 
-check_means <- function(result, normality_results, var_h_results)
+check_means <- function(result, normality_results, var_h_results, threshold = 0.05)
 {
     ## Testing means of the samples
     ## This function chooses the appropriate test according to the results of the Shapiro-Wilks and F-test results
@@ -1016,14 +1016,20 @@ check_means <- function(result, normality_results, var_h_results)
     
     
     if (!require(car)) {
-        warning("car was not installed prior to the use of this function. Latest version will be installed which could be incompatible wit the current environnment set-up.")
+        warning("car was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
         install.packages('car')
         library(car)
     }
     
-    expeNbr <- length(names(result))
+    if (!require(dunn.test)) {
+        warning("dunn.test was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
+        install.packages('dunn.test')
+        library(dunn.test)
+    }
     
-    for (i in 1:expeNbr)
+    mean_test <- list()
+    
+    for (i in names(result))
     {
         condNames <- levels(as.factor(result[[i]]$condition_name))
         combNbr <- length(combn(length(condNames), 2))/2
@@ -1033,7 +1039,7 @@ check_means <- function(result, normality_results, var_h_results)
             print("All variables have a normal distribution.")
             if (sum(var_h_results[[i]]$boolean_results, na.rm = TRUE) == combNbr)
             {
-                print("All variables have a homoscedastic variance.")
+                print("Variables are homoscedastic.")
                 #Graph
                 #par(mar=rep(2,4)) #marge des valeurs
                 #boxplot(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), ylab = "nmolC2H4.h.plant")
@@ -1066,27 +1072,34 @@ check_means <- function(result, normality_results, var_h_results)
                 # AnOVa
                 Anova(anova_model, type = 2)
                 
-                postHocTukey <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ))
-                plot(postHocTukey)
+                mean_test[[i]] <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ), conf.level = 1-threshold)
+                plot(mean_test[[i]])
+                
             }
             else
             {
-                print("nope")
-                #kruslal-wallis (not normal) ou correction de welch (oneway.test ; var not H) + dunn test as a post-hoc test ? add the loading of the "dunn.test" package
+                print("Variables are heteroscedastic.")
+                #correction de welch (oneway.test ; var not H) + dunn test as a post-hoc test ? add the loading of the "dunn.test" package
                     #kruskal.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]))
                 oneway.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]), var.equal = FALSE)
+                
+                mean_test[[i]] <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ), conf.level = 1-threshold)
+                plot(mean_test[[i]])
+                
             }
         }
         else
         {
-            #kruslal-wallis
-            kruskal.test(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name))
+            #kruslal-wallis + dunn test as a post-hoc test ? add the loading of the "dunn.test" package
+            mean_test[[i]] <- dunn.test(x = result[[i]]$nmolC2H4_H_plant, g = as.factor(result[[i]]$condition_name), alpha = threshold)
         }
     }
     
         # Detach package
     detach("package:car", unload = TRUE)
     ##    * 0.05     ** 0.01      *** 0.001
+    
+    return(mean_test)
 } # Ongoing // move the package loading in the right test so not all packages are loaded at the beginning of the function.s
 
 
@@ -1180,7 +1193,7 @@ pathToExpeFolder <- "C:/Users/quent/Desktop/arayej"
 
 init_env(list_of_required_pckg, pathToExpeFolder)
 
-pathToTemplate <- paste(getwd(), "/temp2.xlsx")
+pathToTemplate <- paste(getwd(), "/temp2.xlsx", sep = "")
 
 extract <- data_extraction(getwd(), 1.65)
 temp <- template_gen(getwd(), pathToTemplate)
@@ -1205,14 +1218,13 @@ res <- remove_controls(res)
 write_data(res, "C:/Users/quent/Desktop/arayej/results.xlsx")
 
 result <- res
-result[[1]] <- res[[1]][3:dim(res[[1]])[1],]
 
 a <- check_normality(result)
 normality_results <- a
 b <- check_var_h(result)
 var_h_results <- b
 
-check_means(result, normality_results, var_h_results)
+mean_test_res <- check_means(result, normality_results, var_h_results)
 
 
 
@@ -1250,6 +1262,7 @@ result$Ms <- resultTest$Ms$result
 boxplot(result[[1]]$nmolC2H4_H_plant~result[[1]]$condition_name)
 
 library(ggplot2)
+library(tidytext)
 
 plots <- list( Mt =
     ggplot(result$Mt, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) + 
