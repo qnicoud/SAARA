@@ -808,9 +808,25 @@ pool_expe <- function(results, pooling_ref, template)
     all_pooled
 } ## To Do
 
-
-
-
+merge_reorganize_lists <- function(l1, l2, names = NULL)
+{
+    if (nargs() < 2)
+        stop("arguments 'l1' and/or 'l2' are missing, with no default.")
+    
+    if (length(l1) != length(l2))
+        stop("Lists must be of the same length.")
+    
+    output_list <- lapply(l1, names)
+    
+    for (i in names(l1)) {
+        output_list[[i]] <- list(l1[[i]], l2[[i]])
+        
+        if (!is.null(names))
+            names(output_list[[i]]) <- names
+    }
+    
+    return(output_list)
+}
 
 #### STATISTICAL ANALYSIS --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1050,9 +1066,9 @@ check_means <- function(result, normality_results, var_h_results, threshold = 0.
                 # Graphics Verification of residues normality
                         # oldpar <- par(mar = rep(2,4), oma = rep(2,4), mfrow = c(2,2))
                 pdf(file = paste(pathToExpeFolder, "/qqplot_anova_", gsub(" ", "_", names(result)[i]), ".pdf", sep = ""))
-                plot(anova_model)
+                print(plot(anova_model))
                         # par(oldpar)
-                qqPlot(anova_model, simulate = TRUE, id.method = "y", id.n = 2, main = "Q-Q plot with confidence enveloppe")
+                print(qqPlot(anova_model, simulate = TRUE, id.method = "y", id.n = 2, main = "Q-Q plot with confidence enveloppe"))
                 dev.off()
                 
                 # Verify residues normality
@@ -1073,7 +1089,7 @@ check_means <- function(result, normality_results, var_h_results, threshold = 0.
                 Anova(anova_model, type = 2)
                 
                 mean_test[[i]] <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ), conf.level = 1-threshold)
-                plot(mean_test[[i]])
+                print(plot(mean_test[[i]]))
                 
             }
             else
@@ -1084,7 +1100,7 @@ check_means <- function(result, normality_results, var_h_results, threshold = 0.
                 oneway.test(nmolArray[,i] ~ as.factor(allData[,"Name",i]), var.equal = FALSE)
                 
                 mean_test[[i]] <- TukeyHSD(aov(result[[i]]$nmolC2H4_H_plant ~ as.factor(result[[i]]$condition_name), data = result[[i]] ), conf.level = 1-threshold)
-                plot(mean_test[[i]])
+                print(plot(mean_test[[i]]))
                 
             }
         }
@@ -1103,12 +1119,172 @@ check_means <- function(result, normality_results, var_h_results, threshold = 0.
 } # Ongoing // move the package loading in the right test so not all packages are loaded at the beginning of the function.s
 
 
-
-
-
 #### GRAPHICAL REPRESENTATION --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ##Include GGplot2, look for violin plots to represent the ARA results.
+
+reference_condition <- function(result_ref) 
+{
+    if (nargs() < 1) {
+        stop("argument 'result_ref' is missing, with no default.")
+    }
+    
+    x <- c()
+    y <- c()
+    
+    for (i in 1:dim(result_ref$result)[1]) {
+        x[i] <- result_ref$ref[which(result_ref$ref == result_ref$result$condition_name[i]),2]
+        y[i] <- result_ref$ref[which(result_ref$ref == result_ref$result$condition_name[i]),3]
+        
+    }
+    result_ref$result <- cbind(result_ref$result, class = x)
+    result_ref$result <- cbind(result_ref$result, ord = as.numeric(y))
+    
+    return(result_ref)
+}
+
+assign_facet_classes <- function(result, path_to_ref) 
+{
+    if (nargs() < 2) {
+        stop("at least one argument ('result' and/or 'path_to_ref' is missing.")
+    }
+    
+    if (!require(openxlsx)) {
+        warning("openxlsx was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
+        install.packages('openxlsx')
+        library(openxlsx)
+    }
+    
+    ref <- lapply(result, names)
+    
+    for (i in names(ref)) {
+        ref[[i]] <- read.xlsx(path_to_ref, sheet = i)
+    }
+    
+    result <- lapply(merge_reorganize_lists(result, ref, c("result", "ref")), reference_condition)
+    
+    for (i in names(result))
+        result[[i]] <- result[[i]]$result
+    
+    return(result)
+}
+
+get_high_values <- function(x, lim)
+{
+    if (nargs() < 2) {
+        stop("at least one argument is missing ('x' and/or 'lim'), with no default.")
+    }
+    
+    y <- as.data.frame(table(x[which(x$nmolC2H4_H_plant > lim),"condition_name"]))
+    if (dim(y)[1] != 0) {
+        colnames(y) <- c("condition_name", "nmolC2H4_H_plant")
+        y$nmolC2H4_H_plant <- gsub( "[0-9]", 0.5, y$nmolC2H4_H_plant)
+    }
+    else
+        y <- NULL
+    
+    return(y)
+}
+
+trim_data_4_graphs <- function(data, lim) 
+{
+    if (nargs() < 2) {
+        stop("at least one argument is missing ('data' and/or 'lim'), with no default.")
+    }
+    
+    data <- data[!is.na(data$nmolC2H4_H_plant),]
+    data <- data[!(data$nmolC2H4_H_plant >= lim),]
+    
+    return(data)
+}
+
+get_stat_lab <- function(res) 
+{
+    if (nargs() < 1) {
+        stop("argument 'res' is missing, with no default.")
+    }
+    
+    if (!require(multcompView)) {
+        warning("multcompView was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
+        install.packages('multcompView')
+        library(multcompView)
+    }
+    
+    if (!require(plyr)) {
+        warning("plyr was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
+        install.packages('plyr')
+        library(plyr)
+    }
+    
+    names(res$stat$P.adjusted) <- gsub(" ", "", res$stat$comparisons)
+    assigned_class <- multcompLetters(res$stat$P.adjusted)["Letters"]
+    condition_name <- names(assigned_class[["Letters"]])
+    
+    boxplot.df <- ddply(res$result, .(condition_name), function(x) max(fivenum(x$nmolC2H4_H_plant)+0.1*(x$nmolC2H4_H_plant)+300, na.rm = TRUE))
+    #boxplot.df <- boxplot.df[, c("condition_name", "V1")]
+    plot.levels <- data.frame(condition_name, labels = assigned_class[['Letters']],
+                              stringsAsFactors = FALSE)
+    
+    labels.df <- merge(plot.levels, boxplot.df, by= "condition_name", sort = FALSE)
+    
+    return(labels.df)
+}
+
+gen_stat_lab <- function(result, stats)
+{
+    if (nargs() < 2) {
+        stop("at least one argument ('result' and/or 'stats' is missing.")
+    }
+    
+    labels <- lapply(merge_reorganize_lists(stats, result, c("stat", "result")), get_stat_lab)
+    labels_ref <- lapply(merge_reorganize_lists(labels, ref, c("results", "ref")), reference_condition)
+    
+    for (i in names(labels_ref))
+        labels_ref[[i]] <- labels_ref[[i]]$result
+    
+    return(labels_ref)  
+}
+
+do_the_plot <- function(result, y_axis_title = "", y_axis_text_size = 20, box_width = 1.5, stats = NULL, colors = NULL, facet = FALSE) 
+{
+    if (nargs() < 1) {
+        stop("argument 'result' is missing.")
+    }
+    
+    if (!require(ggplot2)) {
+        warning("ggplot2 was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
+        install.packages('ggplot2')
+        library(ggplot2)
+    }
+    
+    if (!require(tidytext)) {
+        warning("tidytext was not installed prior to the use of this function. Latest version has been installed which could be incompatible wit the current environnment set-up.")
+        install.packages('tidytext')
+        library(tidytext)
+    }
+    
+    
+    the_plot <- ggplot(result, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) +
+                geom_boxplot(size = box_width)
+    
+    if (facet == TRUE)
+        the_plot <- the_plot + facet_grid(~class, scales = "free") 
+    
+    if (!is.null(colors))
+        the_plot <- the_plot + scale_fill_manual(values = colors)
+    
+    the_plot <- the_plot +
+                scale_x_reordered() +
+                labs(x = "", y = y_axis_title) +
+                theme(legend.position = "none",
+                      strip.text = element_text(size = y_axis_text_size + 4, face = "bold"),
+                      axis.title.y = element_text(size = y_axis_text_size + 2),
+                      axis.text.y = element_text(size = y_axis_text_size))
+    if (!is.null(stats)) 
+        the_plot <- the_plot + geom_text(data = stats, aes(x = reorder_within(condition_name, ord, class), y = V1, label = labels), size = 8)
+    
+    return(the_plot)
+}
 
 save_bmp <- function(plots, awidth = 1000, aheight = 850, unit = "px") 
 {
@@ -1165,13 +1341,40 @@ save_pdf <- function(plots, awidth = 1000, aheight = 850, unit = "px", compressi
     }
 }
 
-select_format(format, plots)
+#### SAARA R FUNCTIONS --------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+saara_raw_data <- function()
 {
     
-} ## P To do rompt user with further arguments to pass to the chosen function
+}
 
+saara_calculations <- function()
+{
+    
+}
 
-#### SAARA R FUNCTION --------------------------------------------------------------------------------------------------------------------------------------------------------------
+saara_stats <- function()
+{
+    
+}
+
+saara_plots <- function(result, format, y_axis_title, y_axis_text_size = 20, box_width = 1.5, stats = NULL, colors = NULL, facet = FALSE, graph_width = 1000, graph_height = 850, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none') 
+{
+    plots <- lapply(result, names)
+    
+    for (i in names(plots)) {
+        plots[[i]] <- do_the_plot(result[[i]], y_axis_title = y_axis_title, y_axis_text_size = y_axis_text_size, box_width = box_width, stats = stats[[i]], colors = colors, facet = facet)
+    }
+    
+    switch(format,
+           bmp = save_bmp(plots, awidth = graph_width, aheight = graph_height, unit = graph_unit),
+           jpg = save_jpg(plots, awidth = graph_width, aheight = graph_height, unit = graph_unit, quality = jpg_quality),
+           png = save_png(plots, awidth = graph_width, aheight = graph_height, unit = graph_unit),
+           tiff = save_tiff(plots, awidth = graph_width, aheight = graph_height, unit = graph_unit, compression = tiff_pdf_compression),
+           pdf = save_pdf(plots, awidth = graph_width, aheight = graph_height, unit = graph_unit, compression = tiff_pdf_compression),
+           stop("provided format does not match with the available format : bmp, jpg, png, tiff and pdf")
+           )
+}
 
 saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar = 0.5, statThresholdNorm = 0.5, doGraphics = FALSE, colors = NA, splitFact = 5, vialVolume = 21, slope = 495)
 {
@@ -1184,8 +1387,8 @@ saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar 
 
 #### CODE TESTING ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"), 
-                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15")) ## needs tidyr also
+list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"),
+                                    version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15")) ## needs tidyr, plyr and multcompView also
 
 pooling_ref <- list(Mt = c(1:6), Ms = c(7:11))
 
@@ -1205,7 +1408,7 @@ clean_table <- function(pool_extract) {
     mtNi <- pool_extract[[2]][seq(from = 112, to = 120, by = 2),]
     pool_extract[[1]] <- rbind(pool_extract[[1]], mtNi)
     pool_extract[[2]] <- pool_extract[[2]][-seq(from = 112, to = 120, by = 2),]
-    
+
     pool_extract
 }
 pool_all <- lapply(pool_all, clean_table)
@@ -1230,78 +1433,37 @@ mean_test_res <- check_means(result, normality_results, var_h_results)
 
 
 
-ref <- list(
-    Mt = matrix(c("Ni_Mt", "WT", "bacA", "rpoH1", "lpsB", "lpxXL", "yejA", "yejE", "yejF", 
-                "Controls", "Controls", "Controls", "Enveloppe functions", "Enveloppe functions", "Enveloppe functions", "yej transporter", "yej transporter", "yej transporter",
-                1, 2, 3, 1, 2, 3, 1, 2, 3), 
-              ncol = 3),
-    Ms =  matrix(c("NI_Ms", "WT", "bacA", "rpoH1", "lpsB", "lpxXL", "yejA", "yejE", "yejF", 
-                 "Controls", "Controls", "Controls", "Enveloppe functions", "Enveloppe functions", "Enveloppe functions", "yej transporter", "yej transporter", "yej transporter",
-                 1, 2, 3, 1, 2, 3, 1, 2, 3), 
-               ncol = 3))
+result <- assign_facet_classes(result, "reference.xlsx")
 
-fun <- function(result_ref) {
-    x <- c()
-    y <- c()
-    
-    for (i in 1:dim(result_ref$result)[1]) {
-        x[i] <- result_ref$ref[which(result_ref$ref == result_ref$result$condition_name[i]),2]
-        y[i] <- result_ref$ref[which(result_ref$ref == result_ref$result$condition_name[i]),3]
-        
-    }
-    result_ref$result <- cbind(result_ref$result, class = x)
-    result_ref$result <- cbind(result_ref$result, ord = as.numeric(y))
-    
-    result_ref
-}
+label_ok <- gen_stat_lab(result, mean_test_res)
 
-resultTest <- lapply(list( Mt = list(result = result$Mt, ref = ref$Mt), Ms = list(result = result$Ms, ref = ref$Ms)), fun)
-result$Mt <- resultTest$Mt$result
-result$Ms <- resultTest$Ms$result
-
-boxplot(result[[1]]$nmolC2H4_H_plant~result[[1]]$condition_name)
-
-library(ggplot2)
-library(tidytext)
-
-plots <- list( Mt =
-    ggplot(result$Mt, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) + 
-    geom_boxplot(size = 1.5) +
-    facet_grid(~class, scales = "free") + 
-    scale_x_reordered() +
-    scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
-    labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
-    theme(legend.position = "none",
-          strip.text = element_text(size = 24, face="bold"),
-          axis.title.y = element_text(size = 22),
-          axis.text.y = element_text(size = 20))
-             , Ms = 
-    ggplot(result$Ms, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) + 
-    geom_boxplot(size = 1.5) +
-    facet_grid(~class, scales = "free") + 
-    scale_x_reordered() +
-    scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
-    labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
-    theme(legend.position = "none",
-          strip.text = element_text(size = 24, face="bold"),
-          axis.title.y = element_text(size = 22),
-          axis.text.y = element_text(size = 20))
-)
-
-save_bmp(plots, awidth = 1100, aheight = 500)
+saara_plots(result, "bmp", y_axis_title = "Nitrogen fixation (nmol(C2H4)/h/plant)", y_axis_text_size = 20, box_width = 1.5, stats = label_ok, colors = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123"), facet = TRUE, graph_width = 1100, graph_height = 500, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none') 
 
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
-#lt <- c(1:expeNbr)
-#isLevene <- c(1:expeNbr)
-#for (i in 1:expeNbr)
-#{
-##Leveene test
-#  lt[i]<- leveneTest(nmolC2H4.h.plante[,i], as.factor(allData[,"Name",i]), center = median)["Pr(>F)"]
-#  lt <- as.vector(lt)
-#  if (lt[i]>=varHThreshold)
-#  {
-#    isLevene[i] <- TRUE
-#  }
-#  else {isLevene[i] <- FALSE}
-#}
+# plots <- list( Mt =
+#     ggplot(result$Mt, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) +
+#     geom_boxplot(size = 1.5) +
+#     facet_grid(~class, scales = "free") +
+#     scale_x_reordered() +
+#     scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
+#     labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
+#     theme(legend.position = "none",
+#           strip.text = element_text(size = 24, face="bold"),
+#           axis.title.y = element_text(size = 22),
+#           axis.text.y = element_text(size = 20)) + 
+#     geom_text(data = label_ok$Mt, aes(x = reorder_within(condition_name, ord, class), y = V1, label = labels),size=8)
+#              , Ms =
+#     ggplot(result$Ms, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) +
+#     geom_boxplot(size = 1.5) +
+#     facet_grid(~class, scales = "free") +
+#     scale_x_reordered() +
+#     scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
+#     labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
+#     theme(legend.position = "none",
+#           strip.text = element_text(size = 24, face="bold"),
+#           axis.title.y = element_text(size = 22),
+#           axis.text.y = element_text(size = 20)) + 
+#     geom_text(data = label_ok$Ms, aes(x = reorder_within(condition_name, ord, class), y = V1, label = labels),size=8)
+#     )
+# 
+# save_bmp(plots, awidth = 1100, aheight = 500)
