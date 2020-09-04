@@ -56,8 +56,11 @@ splitV <- 5
 custom_formula <- 0
 slope <- 495
 
-list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "openxlsx", "car", "testit", "RInside"), 
-                                    version = c("1.3.1", "0.6.1", "4.1.0.1","3.0-2", "0.9", "0.2.15"), stringsAsFactors = FALSE)
+list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "openxlsx", 
+                                             "car", "testit", "RInside"), 
+                                    version = c("1.3.1", "0.6.1", "4.1.0.1",
+                                                "3.0-2", "0.9", "0.2.15"), 
+                                    stringsAsFactors = FALSE)
 
 load_SAARA_packages <- function(list_of_required_pckg)
 {
@@ -277,8 +280,9 @@ trim_file_path <- function(file_path)
 } ## Ok<- not needed anymore
 
 
-calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial_volume = 21, splitV = 5, 
-                                       customFormula = 0, nodule_weight = NULL, nodule_number = NULL)
+calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, 
+                                       vial_volume = 21, splitV = 5, customFormula = 0, 
+                                       nodule_weight = NULL, nodule_number = NULL)
 {
     ## Function that calculates the nitrogenase activity in nmol of ethylene produced per hour and per plant
     ##
@@ -353,7 +357,8 @@ calculate_nmolC2H4_H_Plant <- function(pA_s, delta_time = 120, slope = 495, vial
 } ## Ok <- error assertion has to be improved
 
 
-calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 5, custom_formula = 0)
+calculation <- function(extracted_data, slope = 495, vial_volume = 21, splitV = 5, 
+                        custom_formula = 0)
 {
     ## Function that format data and stores converts the raw values into the processed data using calculate_nmolC2H4_H_Plant
     ##
@@ -1116,7 +1121,8 @@ check_means <- function(result, normality_results, var_h_results, threshold = 0.
     ##    * 0.05     ** 0.01      *** 0.001
     
     return(mean_test)
-} # Ongoing // move the package loading in the right test so not all packages are loaded at the beginning of the function.s
+} # Ongoing // move the package loading in the right test so not all packages 
+        3are loaded at the beginning of the function.s
 
 
 #### GRAPHICAL REPRESENTATION --------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1245,7 +1251,8 @@ gen_stat_lab <- function(result, stats)
     return(labels_ref)  
 }
 
-do_the_plot <- function(result, y_axis_title = "", y_axis_text_size = 20, box_width = 1.5, stats = NULL, colors = NULL, facet = FALSE) 
+do_the_plot <- function(result, y_axis_title = "", y_axis_text_size = 20, 
+                        box_width = 1.5, stats = NULL, colors = NULL, facet = FALSE) 
 {
     if (nargs() < 1) {
         stop("argument 'result' is missing.")
@@ -1358,7 +1365,10 @@ saara_stats <- function()
     
 }
 
-saara_plots <- function(result, format, y_axis_title, y_axis_text_size = 20, box_width = 1.5, stats = NULL, colors = NULL, facet = FALSE, graph_width = 1000, graph_height = 850, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none') 
+saara_plots <- function(result, format, y_axis_title, y_axis_text_size = 20, 
+                        box_width = 1.5, stats = NULL, colors = NULL, facet = FALSE, 
+                        graph_width = 1000, graph_height = 850, graph_unit = 'px', 
+                        jpg_quality = 75, tiff_pdf_compression = 'none') 
 {
     plots <- lapply(result, names)
     
@@ -1376,7 +1386,9 @@ saara_plots <- function(result, format, y_axis_title, y_axis_text_size = 20, box
            )
 }
 
-saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar = 0.5, statThresholdNorm = 0.5, doGraphics = FALSE, colors = NA, splitFact = 5, vialVolume = 21, slope = 495)
+saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar = 0.5, 
+                  statThresholdNorm = 0.5, doGraphics = FALSE, colors = NA, splitFact = 5, 
+                  vialVolume = 21, slope = 495)
 {
     
 } # To be done
@@ -1437,7 +1449,8 @@ result <- assign_facet_classes(result, "reference.xlsx")
 
 label_ok <- gen_stat_lab(result, mean_test_res)
 
-saara_plots(result, "bmp", y_axis_title = "Nitrogen fixation (nmol(C2H4)/h/plant)", y_axis_text_size = 20, box_width = 1.5, stats = label_ok, colors = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123"), facet = TRUE, graph_width = 1100, graph_height = 500, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none') 
+saara_plots(result, "bmp", y_axis_title = "Nitrogen fixation (nmol(C2H4)/h/plant)", 
+            y_axis_text_size = 20, box_width = 1.5, stats = label_ok, colors = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123"), facet = TRUE, graph_width = 1100, graph_height = 500, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none') 
 
 
 # plots <- list( Mt =
