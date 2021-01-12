@@ -1,4 +1,4 @@
-## R script for SAARA (Statistical Analysis of Acetylene Reduction Assay)
+## R script of the SAARA pipeline (Statistical Analysis of Acetylene Reduction Assay)
 ## To be embedded in a C++ overlay
 ##
 ## Autor : Quentin Nicoud
@@ -43,7 +43,6 @@
 #       - template is set up with no header. should that be added for an esaier usage of the program ?
 #       - remove package mannagement from all function as I added load_SAARA_packages an unload_SAARA_packages
 
-rm(list = ls())
 
 #### PACKAGE MANAGEMENT AND IMPORTANT VARIABLES --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -609,7 +608,7 @@ template_gen <- function(pathToExpeFolder, path_to_template)
     ## The given file must be an .xls or .xlsx and must be present in the folder
     ## which path is given by pathToExpeFolder. The tables must not have headers.
     ## This file must carry one sheet per experiment, detailling for each sample the necessary data:
-    ##              - The condition identifier of each sample used in the Agilent Software during the Easy Queue setting.
+    ##              - The condition identifier of each sample used in the Agilent Software during the Sequence setting.
     ##              - condition_name : the identifier of the condition (name of the mutant, of the treatment, etc.)
     ##              - sample_number : the number of this sample within a given condition.
     ##              - incubation_hour : time when acetylene was injected in the vials (hours).
@@ -1393,90 +1392,3 @@ saara <- function(pathToTemplate, pathToData, doStats = FALSE, statThresholdVar 
     
 } # To be done
 
-
-
-
-# 
-# #### CODE TESTING ---------------------------------------------------------------------------------------------------------------------------------------------------------------
-# 
-# list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"),
-#                                     version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15")) ## needs tidyr, plyr and multcompView also
-# 
-# pooling_ref <- list(Mt = c(1:6), Ms = c(7:11))
-# 
-# pathToExpeFolder <- "C:/Users/quent/Desktop/arayej"
-# 
-# init_env(list_of_required_pckg, pathToExpeFolder)
-# 
-# pathToTemplate <- paste(getwd(), "/temp2.xlsx", sep = "")
-# 
-# extract <- data_extraction(getwd(), 1.65)
-# temp <- template_gen(getwd(), pathToTemplate)
-# 
-# pool_all <- pool_expe(extract, pooling_ref, temp)
-# 
-# ##Temp / spe to yejara expe
-# clean_table <- function(pool_extract) {
-#     mtNi <- pool_extract[[2]][seq(from = 112, to = 120, by = 2),]
-#     pool_extract[[1]] <- rbind(pool_extract[[1]], mtNi)
-#     pool_extract[[2]] <- pool_extract[[2]][-seq(from = 112, to = 120, by = 2),]
-# 
-#     pool_extract
-# }
-# pool_all <- lapply(pool_all, clean_table)
-# 
-# 
-# res <- data_formating_and_calc(pool_all[[1]], pool_all[[2]])
-# 
-# res <- remove_controls(res)
-# 
-# write_data(res, "C:/Users/quent/Desktop/arayej/results.xlsx")
-# 
-# result <- res
-# 
-# a <- check_normality(result)
-# normality_results <- a
-# b <- check_var_h(result)
-# var_h_results <- b
-# 
-# mean_test_res <- check_means(result, normality_results, var_h_results)
-# 
-# 
-# 
-# 
-# 
-# result <- assign_facet_classes(result, "reference.xlsx")
-# 
-# label_ok <- gen_stat_lab(result, mean_test_res)
-# 
-# saara_plots(result, "bmp", y_axis_title = "Nitrogen fixation (nmol(C2H4)/h/plant)", 
-#             y_axis_text_size = 20, box_width = 1.5, stats = label_ok, colors = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123"), facet = TRUE, graph_width = 1100, graph_height = 500, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none') 
-# 
-# 
-# # plots <- list( Mt =
-# #     ggplot(result$Mt, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) +
-# #     geom_boxplot(size = 1.5) +
-# #     facet_grid(~class, scales = "free") +
-# #     scale_x_reordered() +
-# #     scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
-# #     labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
-# #     theme(legend.position = "none",
-# #           strip.text = element_text(size = 24, face="bold"),
-# #           axis.title.y = element_text(size = 22),
-# #           axis.text.y = element_text(size = 20)) + 
-# #     geom_text(data = label_ok$Mt, aes(x = reorder_within(condition_name, ord, class), y = V1, label = labels),size=8)
-# #              , Ms =
-# #     ggplot(result$Ms, aes(x = reorder_within(condition_name, ord, class), y = nmolC2H4_H_plant, fill = condition_name)) +
-# #     geom_boxplot(size = 1.5) +
-# #     facet_grid(~class, scales = "free") +
-# #     scale_x_reordered() +
-# #     scale_fill_manual(values = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123")) +
-# #     labs(x = "", y = "Nitrogen fixation (nmol(C2H4)/h/plant)") +
-# #     theme(legend.position = "none",
-# #           strip.text = element_text(size = 24, face="bold"),
-# #           axis.title.y = element_text(size = 22),
-# #           axis.text.y = element_text(size = 20)) + 
-# #     geom_text(data = label_ok$Ms, aes(x = reorder_within(condition_name, ord, class), y = V1, label = labels),size=8)
-# #     )
-# # 
-# # save_bmp(plots, awidth = 1100, aheight = 500)
