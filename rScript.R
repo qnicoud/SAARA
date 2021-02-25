@@ -458,7 +458,7 @@ get_tree_path <- function(pathToExpeFolder)
 } ## Ok <- add strmatch to rmv unwanted folders and other stuff. (done I think)
 
 
-data_extraction <- function(pathToExpeFolder, expected_peak_ret_time = 1.65)
+data_extraction <- function(pathToExpeFolder, ac_name = "Ac", et_name = "Et")
 {
     ## Function that extract the data from the tree.
     ## Based on the position of each peaks in our assays. May be different for other experimental designs (this function can be improved).
@@ -505,9 +505,37 @@ data_extraction <- function(pathToExpeFolder, expected_peak_ret_time = 1.65)
         data <- data.frame(subfile_name=0, sample_id=0, injection_time_H=0, 
                            injection_time_min=0, ethylene_MeasRetTime=0, area=0)
         
+        expe_et_ctrl <- 0
+        
             # For loop that goes through each sample folder
         for (j in paths[[i]])
         {
+            
+            # Collect base inforamtion of the sample
+            temp_base_info <- read_xls(paste(pathToExpeFolder, i, j, "REPORT01.xls", sep = '/'), sheet = "Sheet1") # Read info data
+            
+            
+            # Find in which row is stored the name of the sample
+            test_name_variable <- which(!c(is.na(temp_base_info[temp_base_info[,1]=="SampleName",2]), is.na(temp_base_info[temp_base_info[,1]=="SampleInfo",2])))
+            
+            if(length(test_name_variable) == 0)
+                stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
+            
+            var_names <- switch( test_name_variable,
+                                 s_name = "SampleName",
+                                 s_info = "SampleInfo",
+            )
+            
+            # Store the id of the row which contains the sample name
+            name_id <- which(temp_base_info[,1] == var_names)
+            
+            # if the actual sample is acetylene control, skip to next iteration
+            if (temp_base_info[name_id,2] == ac_name) {
+                next
+            }
+                
+            
+            # otherwise get the peak data
             temp_peak_data <- read_xls(paste(pathToExpeFolder, i, j, "REPORT01.xls", sep = '/'), sheet = "Peak")[,1:15] # Read data
             temp_peak_data$IntPeakType <- tidyr::replace_na(temp_peak_data$IntPeakType, 'a') # Remove Na and replace them by a
             temp_peak_data$HeaderName <- tidyr::replace_na(temp_peak_data$HeaderName, 'a') # Remove Na and replace them by a
@@ -515,80 +543,32 @@ data_extraction <- function(pathToExpeFolder, expected_peak_ret_time = 1.65)
             
             temp_peak_data[is.na(temp_peak_data)] <- 0 # Remove Na and replace them by zeros.
             
-            #     # Identify the peak that holds the ethylene value, based on the measured retention time.
-            # ratioRetTime <- temp_peak_data$MeasRetTime/max(temp_peak_data$MeasRetTime) # This makes a ratio between values of each 
-            #                
-            temp_base_info <- read_xls(paste(pathToExpeFolder, i, j, "REPORT01.xls", sep = '/'), sheet = "Sheet1") # Read info data
-            
-            test_name_variable <- c(is.na(temp_base_info[temp_base_info[,1]=="SampleName",2]), is.na(temp_base_info[temp_base_info[,1]=="SampleInfo",2]))
-            
-            # if (sum(is.nan(ratioRetTime)) == 0) {
-            #                                                # peak and the max value of these values.
-            #     pos <- which(ratioRetTime == 1)-1   # Get only the value before the acetylene
-            #     while (temp_peak_data$MeasRetTime[pos] == 0) # Sometimes the predicted elution time of the different 
-            #                                                  # compounds interfers with the measured elution time. To avoid that,
-            #                                                  # this loop searches for the first value in the MeasRetTime that is different to zero.
-            #     {
-            #         pos = pos - 1
-            #         if (pos == 1)
-            #         {
-            #             ## error
-            #             break
-            #         }
-            #     }
-            #     
-            #     if (!test_name_variable[1]) {
-            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleName",2]),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-            #                               temp_peak_data$MeasRetTime[pos], temp_peak_data$Area[pos])) # Store everything into one data.frame
-            #     }
-            #     else if (!test_name_variable[2]) {
-            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-            #                               temp_peak_data$MeasRetTime[pos], temp_peak_data$Area[pos])) # Store everything into one data.frame
-            #     }
-            #     else {
-            #         stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
-            #     }
-            # }
-            # else {
-            #     if (!test_name_variable[1]) {
-            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleName",2]),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-            #                               NA, NA)) # Store everything into one data.frame
-            #     }
-            #     else if (!test_name_variable[2]) {
-            #         data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-            #                               substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-            #                               NA, NA)) # Store everything into one data.frame
-            #     }
-            #     else {
-            #         stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
-            #     }
-            # }
-            
-            find_closest_peak <- temp_peak_data$MeasRetTime - expected_peak_ret_time
-            closest_peak <- which(abs(find_closest_peak) == min(abs(find_closest_peak)))
-            
-            if (!test_name_variable[1]) {
-                data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleName",2]),
-                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-                                      temp_peak_data$MeasRetTime[closest_peak], temp_peak_data$Area[closest_peak])) # Store everything into one data.frame
+            # if actual sample is ethylene, get measeure of retention time of the peak and skip to next sample
+            if (temp_base_info[name_id,2] == et_name) {
+                expe_et_ctrl <- temp_peak_data$MeasRetTime[which(temp_peak_data$Area == max(temp_peak_data$Area))]
+                next
             }
-            else if (!test_name_variable[2]) {
-                data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[temp_base_info[,1]=="SampleInfo",2]),
-                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
-                                      substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
-                                      temp_peak_data$MeasRetTime[closest_peak], temp_peak_data$Area[closest_peak])) # Store everything into one data.frame
-            }
-            else {
-                stop("Cannot find sample names please be sure that sample names were correctly specified before the run")
-            }
+            
+            # Otherwise, try to identify the ethylene peak using two complementary methods:
+                # - first find the peak that is the closest to the ethlene peak
+            close_to_et <- abs(temp_peak_data$MeasRetTime - expe_et_ctrl)
+            find_closest_to_et <- temp_peak_data$MeasRetTime[which(close_to_et == min(close_to_et))]
+            
+                # - second, find the second greater peak of the separation profile
+            find_second_greater_peak <- temp_peak_data$MeasRetTime[which(temp_peak_data$Area == max(temp_peak_data$Area[-which(temp_peak_data$Area == max(temp_peak_data$Area))]))]
+            
+            if (find_closest_to_et == find_second_greater_peak)
+                et_pos <- which(temp_peak_data$MeasRetTime == find_closest_to_et)
+            
+            else
+                et_pos <- which(temp_peak_data$MeasRetTime == find_closest_to_et)
+            
+            
+            data <- rbind(data, c(paste(i, j, sep="/"), as.character(temp_base_info[name_id,2]),
+                                  substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 12, stop = 13),
+                                  substr(temp_base_info[temp_base_info[,1]=="InjDateTime",2], start = 15, stop = 16),
+                                  temp_peak_data$MeasRetTime[et_pos], temp_peak_data$Area[et_pos])) # Store everything into one data.frame
+            
         }
         data <- data[2:dim(data)[1],] # Trim the first row of the data.frame which only contains zeros
         all_data[[i]] <- data # Store the data frame in the all_data list.
@@ -788,7 +768,7 @@ remove_controls <- function(results)
         
     }
     trimmed
-} ## Ongoing
+} ## Unfinished + deprecated
 
 
 pool_expe <- function(results, pooling_ref, template)

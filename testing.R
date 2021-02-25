@@ -1,41 +1,62 @@
+# Nettoyer l'environement (être sur qu'il n'a plus de données dans R qui pourrait générer un conflit)
 rm(list = ls())
 
+
+# Charger dans R les données du package "SAARA"
 source(file = "C:/Users/quent/Documents/GitHub/SAARA/rScript.R")
 
+
+# Défini une liste de packages à installer sur la machine
 list_of_required_pckg <- data.frame(pckg = c("readxl", "xlsx", "car", "testit", "RInside"),
                                     version = c("1.3.1", "0.6.1", "3.0-2", "0.9", "0.2.15")) ## needs tidyr, plyr and multcompView also
 
+
 # pooling_ref <- list(Mt = c(1:6), Ms = c(7:11))
 
-pathToExpeFolder <- "C:/Users/quent/Desktop/ARA_SARA"
 
+# Défini le chemin vers le dossier dans lequel se trouvent les données
+pathToExpeFolder <- "C:/Users/quent/Desktop/data_ARA"
+
+# Initialise R pour qu'il puisse effectuer toute l'analyse qui suit
 init_env(list_of_required_pckg, pathToExpeFolder)
 
+# Définir la localisation du tableau modèle, contenant la correspondance entre noms d'échantillons et annotation dans la machine
 pathToTemplate <- paste(getwd(), "/temp.xlsx", sep = "")
 
-extract <- data_extraction(getwd(), 1.65)
+# Récolter les données
+extract <- data_extraction(getwd(), 1.7)
+
+# Utiliser les fichier modèle (temp.xlsx) pour générer le tableau modèles dans R
 temp <- template_gen(getwd(), pathToTemplate)
 
-pooling_ref <- list(data = seq(1,))
 
+
+
+pooling_ref <- list(data = seq(1,2))
+# 
 pool_all <- pool_expe(extract, pooling_ref, temp)
 
-##Temp / spe to yejara expe
-clean_table <- function(pool_extract) {
-    mtNi <- pool_extract[[2]][seq(from = 112, to = 120, by = 2),]
-    pool_extract[[1]] <- rbind(pool_extract[[1]], mtNi)
-    pool_extract[[2]] <- pool_extract[[2]][-seq(from = 112, to = 120, by = 2),]
+# ##Temp / spe to yejara expe
+# clean_table <- function(pool_extract) {
+#     mtNi <- pool_extract[[2]][seq(from = 112, to = 120, by = 2),]
+#     pool_extract[[1]] <- rbind(pool_extract[[1]], mtNi)
+#     pool_extract[[2]] <- pool_extract[[2]][-seq(from = 112, to = 120, by = 2),]
+# 
+#     pool_extract
+# }
+# pool_all <- lapply(pool_all, clean_table)
+# 
+# res <- data_formating_and_calc(pool_all[[1]], pool_all[[2]])
 
-    pool_extract
-}
-pool_all <- lapply(pool_all, clean_table)
 
+
+
+# Formate les data et les formate en utilisant le modèle
+res <- data_formating_and_calc(extract, temp)
 
 res <- data_formating_and_calc(pool_all[[1]], pool_all[[2]])
 
-res <- remove_controls(res)
-
-write_data(res, "C:/Users/quent/Desktop/ARA_SARA/results.xlsx")
+write_data(res, "C:/Users/quent/Desktop/data_ARA/results.xlsx")
 
 result <- res
 
