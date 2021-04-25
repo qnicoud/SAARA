@@ -49,8 +49,6 @@ pool_all <- pool_expe(extract, pooling_ref, temp)
 # res <- data_formating_and_calc(pool_all[[1]], pool_all[[2]])
 
 
-
-
 # Formate les data et les formate en utilisant le modèle
 res <- data_formating_and_calc(extract, temp)
 
@@ -59,6 +57,48 @@ res <- data_formating_and_calc(pool_all[[1]], pool_all[[2]])
 write_data(res, "C:/Users/quent/Desktop/data_ARA/results.xlsx")
 
 result <- res
+
+
+
+
+
+##Reshape table
+result$data <- result$data[-which(result$data[,1] == "Control"),]
+
+dunn.test::dunn.test(result$data$nmolC2H4_H_plant, result$data$condition_name)
+
+
+result <- data.frame(cond = result$data$condition_name, plasmid = rep(0,times = dim(result$data)[1]), id = result$data$sample_id, val = result$data$nmolC2H4_H_plant)
+
+
+
+a <- str_split(result[,1], pattern = "_")
+
+for (i in 1:length(a)) {
+    result[i,1] <- a[[i]][1]
+    result[i,2] <- a[[i]][2]
+    
+}
+
+
+test <- tidyr::pivot_wider(as.data.frame(result), names_from = plasmid, values_from=val)
+
+xlsx::write.xlsx(test, "C:/Users/quent/Desktop/data_ARA/resultstest.xlsx")
+
+require(ggplot2)
+the_plot <- ggplot(as.data.frame(result), aes(x = cond, y = val, fill = plasmid)) +
+    geom_boxplot(size = 0.5, position=position_dodge(1))
+the_plot <- the_plot + facet_grid(~cond, scales = "free")
+the_plot <- the_plot + scale_fill_manual(values = c("black", "white"))
+the_plot <- the_plot +
+    labs(x = "", y = "Nitrogenase activity (nmol C2H4 / h / plant)") +
+    theme(legend.position = "none",
+          strip.text = element_text(size = 10 + 4, face = "bold"),
+          axis.title.y = element_text(size = 10 + 2),
+          axis.text.y = element_text(size = 10),
+          axis.text.x = element_blank())
+the_plot
+
 
 a <- check_normality(result)
 normality_results <- a
@@ -73,8 +113,8 @@ result <- assign_facet_classes(result, "reference.xlsx")
 
 label_ok <- gen_stat_lab(result, mean_test_res)
 
-saara_plots(result, "bmp", y_axis_title = "Nitrogen fixation (nmol(C2H4)/h/plant)",
-            y_axis_text_size = 20, box_width = 1.5, stats = label_ok, colors = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123"), facet = TRUE, graph_width = 1100, graph_height = 500, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none')
+saara_plots(res, "bmp", y_axis_title = "Nitrogen fixation (nmol(C2H4)/h/plant)",
+            y_axis_text_size = 20, box_width = 1.5, colors = c("black", "#4CB4BE", "#93aa00", "grey", "#619cff", "white", "#FFBA00", "#FF9223", "#FF5123"), facet = TRUE, graph_width = 1100, graph_height = 500, graph_unit = 'px', jpg_quality = 75, tiff_pdf_compression = 'none')
 
 
 # plots <- list( Mt =
